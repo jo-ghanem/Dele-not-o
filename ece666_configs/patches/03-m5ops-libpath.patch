@@ -1,0 +1,10 @@
+--- a/util/m5/SConstruct
++++ b/util/m5/SConstruct
+@@ -61,6 +61,7 @@
+     main.Append(CCFLAGS=[ '-O2' ])
+ main.Append(CPPPATH=[ common_include ])
+ main.Append(CXXFLAGS=[ '-std=c++14' ])
++main.Append(LIBFLAGS=[ '/usr/lib64' ])
+
+ if not GetOption('verbose'):
+     # A functor which returns a shorter summary string to replace the normal
