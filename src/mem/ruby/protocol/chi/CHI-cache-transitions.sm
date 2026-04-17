@@ -1012,23 +1012,42 @@ transition({BUSY_BLKD,BUSY_INTR}, ActionStalledOnHazard) {
   StallActionOnHazard;
 }
 
-// Delegated AMO trigger stubs (replaced in Stages 2-5)
+// Delegated AMO: owner-side accept SnpAMO in stable exclusive states
+
+transition({UC,UD}, SnpAMO, BUSY_BLKD) {
+  Initiate_Snoop;
+  Initiate_DelegatedAMOSnoop;
+  Pop_SnoopRdyQueue;
+  ProcessNextState;
+}
+
+// Delegated AMO: HN-side trigger transitions
 
 transition(BUSY_BLKD, SendSnpAMO) {
-  Stub_DelegatedAMO;
+  Pop_TriggerQueue;
+  Send_SnpAMO;
+  ProcessNextState_ClearPending;
 }
 
 transition({BUSY_BLKD,BUSY_INTR}, WaitSnpRespAMODone) {
-  Stub_DelegatedAMO;
+  Pop_TriggerQueue;
 }
 
+// Delegated AMO: owner-side trigger transitions
+
 transition(BUSY_BLKD, SendDBIDResp_SnpAMO) {
-  Stub_DelegatedAMO;
+  Pop_TriggerQueue;
+  Send_DBIDResp_SnpAMO;
+  ProcessNextState_ClearPending;
 }
 
 transition(BUSY_BLKD, SendCompData_SnpAMO) {
-  Stub_DelegatedAMO;
+  Pop_TriggerQueue;
+  Send_CompData_SnpAMO;
+  ProcessNextState_ClearPending;
 }
+
+// Delegated AMO: stubs for Stages 4-5
 
 transition(BUSY_BLKD, Execute_DelegatedAMO) {
   Stub_DelegatedAMO;

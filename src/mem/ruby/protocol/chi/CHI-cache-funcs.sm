@@ -524,6 +524,13 @@ TBE allocateSnoopTBE(Addr addr, CHIRequestMsg in_msg), return_by_pointer="yes" {
   tbe.snpNeedsData := in_msg.retToSrc;
   tbe.dataToFwdRequestor := in_msg.dataToFwdRequestor;
 
+  if (in_msg.type == CHIRequestType:SnpAMO) {
+    tbe.accAddr := in_msg.accAddr;
+    tbe.accSize := in_msg.accSize;
+    tbe.atomic_op.clear();
+    tbe.atomic_op.orMask(in_msg.atomic_op);
+  }
+
   tbe.use_DMT := false;
   tbe.use_DCT := false;
   tbe.use_delegate := false;

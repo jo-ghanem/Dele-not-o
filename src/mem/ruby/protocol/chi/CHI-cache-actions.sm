@@ -885,9 +885,7 @@ action(Initiate_AtomicReturn_I, desc="") {
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
-    return;
-  }
-  if (policy_type == 0){ // ALL NEAR
+  } else if (policy_type == 0){ // ALL NEAR
     tbe.actions.push(Event:SendReadUnique);
     tbe.actions.push(Event:WriteFEPipe);
     tbe.actions.push(Event:CheckCacheFill);
@@ -913,9 +911,7 @@ action(Initiate_AtomicNoReturn_I, desc="") {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
     tbe.actions.push(Event:Forward_Comp_ANR);
-    return;
-  }
-  if (policy_type == 0){ // ALL NEAR
+  } else if (policy_type == 0){ // ALL NEAR
     tbe.actions.push(Event:SendReadUnique);
     tbe.actions.push(Event:WriteFEPipe);
     tbe.actions.push(Event:CheckCacheFill);
@@ -1135,20 +1131,20 @@ action(Initiate_AtomicReturn_LocalWrite, desc="") {
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
-    return;
+  } else {
+    if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
+      tbe.actions.push(Event:SendSnpUnique);
+    } else if (tbe.dir_sharers.count() > 0){
+      tbe.actions.push(Event:SendSnpUniqueRetToSrc);
+    }
+    tbe.actions.push(Event:SendDBIDResp_AR);
+    tbe.actions.pushNB(Event:WriteFEPipe);
+    tbe.actions.push(Event:SendCompData_AR);
+    tbe.actions.push(Event:DelayAtomic);
+    tbe.actions.push(Event:CheckCacheFill);
+    tbe.actions.push(Event:WriteBEPipe);
+    tbe.actions.push(Event:TagArrayWrite);
   }
-  if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
-    tbe.actions.push(Event:SendSnpUnique);
-  } else if (tbe.dir_sharers.count() > 0){
-    tbe.actions.push(Event:SendSnpUniqueRetToSrc);
-  }
-  tbe.actions.push(Event:SendDBIDResp_AR);
-  tbe.actions.pushNB(Event:WriteFEPipe);
-  tbe.actions.push(Event:SendCompData_AR);
-  tbe.actions.push(Event:DelayAtomic);
-  tbe.actions.push(Event:CheckCacheFill);
-  tbe.actions.push(Event:WriteBEPipe);
-  tbe.actions.push(Event:TagArrayWrite);
 }
 
 action(Initiate_AtomicReturn_WriteBack, desc="") {
@@ -1157,22 +1153,22 @@ action(Initiate_AtomicReturn_WriteBack, desc="") {
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
-    return;
+  } else {
+    if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
+      tbe.actions.push(Event:SendSnpUnique);
+    } else if (tbe.dir_sharers.count() > 0){
+      tbe.actions.push(Event:SendSnpUniqueRetToSrc);
+    }
+    tbe.actions.push(Event:SendDBIDResp_AR);
+    tbe.actions.pushNB(Event:WriteFEPipe);
+    tbe.actions.push(Event:SendCompData_AR);
+    tbe.actions.push(Event:DelayAtomic);
+    tbe.actions.push(Event:SendWriteNoSnp);
+    tbe.actions.push(Event:WriteBEPipe);
+    tbe.actions.push(Event:SendWUData);
+    tbe.dataToBeInvalid := true;
+    tbe.actions.pushNB(Event:TagArrayWrite);
   }
-  if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
-    tbe.actions.push(Event:SendSnpUnique);
-  } else if (tbe.dir_sharers.count() > 0){
-    tbe.actions.push(Event:SendSnpUniqueRetToSrc);
-  }
-  tbe.actions.push(Event:SendDBIDResp_AR);
-  tbe.actions.pushNB(Event:WriteFEPipe);
-  tbe.actions.push(Event:SendCompData_AR);
-  tbe.actions.push(Event:DelayAtomic);
-  tbe.actions.push(Event:SendWriteNoSnp);
-  tbe.actions.push(Event:WriteBEPipe);
-  tbe.actions.push(Event:SendWUData);
-  tbe.dataToBeInvalid := true;
-  tbe.actions.pushNB(Event:TagArrayWrite);
 }
 
 action(Initiate_AtomicNoReturn_LocalWrite, desc="") {
@@ -1182,25 +1178,25 @@ action(Initiate_AtomicNoReturn_LocalWrite, desc="") {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
     tbe.actions.push(Event:Forward_Comp_ANR);
-    return;
-  }
-  if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
-    tbe.actions.push(Event:SendSnpUnique);
-  } else if (tbe.dir_sharers.count() > 0){
-    tbe.actions.push(Event:SendSnpUniqueRetToSrc);
-  }
-  if (comp_anr) {
-    tbe.actions.push(Event:SendDBIDResp_ANR);
-    tbe.actions.pushNB(Event:WriteFEPipe);
-    tbe.actions.pushNB(Event:SendComp_ANR);
   } else {
-    tbe.actions.push(Event:SendCompDBIDResp_ANR);
-    tbe.actions.pushNB(Event:WriteFEPipe);
+    if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
+      tbe.actions.push(Event:SendSnpUnique);
+    } else if (tbe.dir_sharers.count() > 0){
+      tbe.actions.push(Event:SendSnpUniqueRetToSrc);
+    }
+    if (comp_anr) {
+      tbe.actions.push(Event:SendDBIDResp_ANR);
+      tbe.actions.pushNB(Event:WriteFEPipe);
+      tbe.actions.pushNB(Event:SendComp_ANR);
+    } else {
+      tbe.actions.push(Event:SendCompDBIDResp_ANR);
+      tbe.actions.pushNB(Event:WriteFEPipe);
+    }
+    tbe.actions.push(Event:DelayAtomic);
+    tbe.actions.push(Event:CheckCacheFill);
+    tbe.actions.push(Event:WriteBEPipe);
+    tbe.actions.push(Event:TagArrayWrite);
   }
-  tbe.actions.push(Event:DelayAtomic);
-  tbe.actions.push(Event:CheckCacheFill);
-  tbe.actions.push(Event:WriteBEPipe);
-  tbe.actions.push(Event:TagArrayWrite);
 }
 
 action(Initiate_AtomicNoReturn_WriteBack, desc="") {
@@ -1210,27 +1206,27 @@ action(Initiate_AtomicNoReturn_WriteBack, desc="") {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
     tbe.actions.push(Event:Forward_Comp_ANR);
-    return;
-  }
-  if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
-    tbe.actions.push(Event:SendSnpUnique);
-  } else if (tbe.dir_sharers.count() > 0){
-    tbe.actions.push(Event:SendSnpUniqueRetToSrc);
-  }
-  if (comp_anr) {
-    tbe.actions.push(Event:SendDBIDResp_ANR);
-    tbe.actions.pushNB(Event:WriteFEPipe);
-    tbe.actions.pushNB(Event:SendComp_ANR);
   } else {
-    tbe.actions.push(Event:SendCompDBIDResp_ANR);
-    tbe.actions.pushNB(Event:WriteFEPipe);
+    if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
+      tbe.actions.push(Event:SendSnpUnique);
+    } else if (tbe.dir_sharers.count() > 0){
+      tbe.actions.push(Event:SendSnpUniqueRetToSrc);
+    }
+    if (comp_anr) {
+      tbe.actions.push(Event:SendDBIDResp_ANR);
+      tbe.actions.pushNB(Event:WriteFEPipe);
+      tbe.actions.pushNB(Event:SendComp_ANR);
+    } else {
+      tbe.actions.push(Event:SendCompDBIDResp_ANR);
+      tbe.actions.pushNB(Event:WriteFEPipe);
+    }
+    tbe.actions.push(Event:DelayAtomic);
+    tbe.actions.push(Event:SendWriteNoSnp);
+    tbe.actions.push(Event:WriteBEPipe);
+    tbe.actions.push(Event:SendWUData);
+    tbe.dataToBeInvalid := true;
+    tbe.actions.pushNB(Event:TagArrayWrite);
   }
-  tbe.actions.push(Event:DelayAtomic);
-  tbe.actions.push(Event:SendWriteNoSnp);
-  tbe.actions.push(Event:WriteBEPipe);
-  tbe.actions.push(Event:SendWUData);
-  tbe.dataToBeInvalid := true;
-  tbe.actions.pushNB(Event:TagArrayWrite);
 }
 
 action(Initiate_AtomicReturn_Forward, desc="") {
@@ -3991,8 +3987,64 @@ action(SnpOncePipe, desc="") {
 }
 
 //////////////////////////////////
-// Delegated AMO stub (replaced in Stages 2-5)
+// Delegated AMO actions
 
+// HN-side: dispatch SnpAMO to exclusive owner
+action(Send_SnpAMO, desc="") {
+  assert(is_valid(tbe));
+  assert(tbe.dir_ownerExists);
+  assert(tbe.dir_ownerIsExcl);
+
+  assert(tbe.expected_snp_resp.expected() == 0);
+  clearExpectedSnpResp(tbe);
+  tbe.expected_snp_resp.addExpectedRespType(CHIResponseType:SnpResp_UD_AMODone);
+  tbe.expected_snp_resp.addExpectedRespType(CHIResponseType:SnpResp_Retry_AMO);
+  tbe.expected_snp_resp.addExpectedCount(1);
+
+  enqueue(snpOutPort, CHIRequestMsg, snoop_latency) {
+    prepareRequest(tbe, CHIRequestType:SnpAMO, out_msg);
+    out_msg.Destination.add(tbe.dir_owner);
+    out_msg.retToSrc := false;
+    out_msg.dataToFwdRequestor := (tbe.reqType == CHIRequestType:AtomicReturn);
+    out_msg.accAddr := tbe.accAddr;
+    out_msg.accSize := tbe.accSize;
+    out_msg.atomic_op.clear();
+    out_msg.atomic_op.orMask(tbe.atomic_op);
+    out_msg.ns := tbe.ns;
+  }
+}
+
+// Owner-side: initialize delegated AMO snoop action queue
+action(Initiate_DelegatedAMOSnoop, desc="") {
+  tbe.actions.push(Event:SnpSharedPipe);
+  tbe.actions.push(Event:SendDBIDResp_SnpAMO);
+  if (tbe.dataToFwdRequestor) {
+    tbe.actions.push(Event:SendCompData_SnpAMO);
+  }
+}
+
+// Owner-side: send DBIDResp to original requester
+action(Send_DBIDResp_SnpAMO, desc="") {
+  assert(is_valid(tbe));
+  enqueue(rspOutPort, CHIResponseMsg, response_latency) {
+    out_msg.addr := address;
+    out_msg.type := CHIResponseType:DBIDResp;
+    out_msg.responder := machineID;
+    out_msg.Destination.add(tbe.fwdRequestor);
+  }
+}
+
+// Owner-side: send pre-image data to requester (AR only)
+action(Send_CompData_SnpAMO, desc="") {
+  assert(is_valid(tbe));
+  assert(tbe.dataValid);
+  assert(tbe.dataToFwdRequestor);
+  tbe.snd_msgType := CHIDataType:CompData_I;
+  tbe.snd_destination := tbe.fwdRequestor;
+  setupPendingSend(tbe);
+}
+
+// Stub for unimplemented delegated AMO actions (Stages 4-5)
 action(Stub_DelegatedAMO, desc="Placeholder for unimplemented delegated AMO actions") {
   error("Delegated AMO action not yet implemented");
 }
