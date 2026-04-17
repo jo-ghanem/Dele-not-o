@@ -103,6 +103,7 @@ class SimpleDirectory(BaseDirectory):
         cache_line_size: int,
         clk_domain: ClockDomain,
         addr_ranges: List[AddrRange],
+        hn_amo_policy: int = 0,
     ):
         super().__init__(network, cache_line_size)
 
@@ -125,6 +126,9 @@ class SimpleDirectory(BaseDirectory):
         self.is_HN = True
         self.enable_DMT = True
         self.enable_DCT = True
+
+        # Delegated AMO policy: 0=All-Central, 1=Pinned-Owner, 2=Unowned-Central
+        self.hn_amo_policy = hn_amo_policy
 
         # "Owned state"
         self.allow_SD = True

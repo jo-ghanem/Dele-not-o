@@ -98,6 +98,8 @@ class PrivateL1PrivateL2CacheHierarchy(
         l1d_assoc: int,
         l2_size: str,
         l2_assoc: int,
+        hn_amo_policy: int = 0,
+        atomic_op_latency: int = 4,
     ):
         """
         :param l1i_size: The size of the L1 Instruction cache
@@ -106,6 +108,8 @@ class PrivateL1PrivateL2CacheHierarchy(
         :param l1d_assoc: The associativity of the L1 Data cache
         :param l2_size: The size of the L2 cache
         :param l2_assoc: The associativity of the L2 cache
+        :param hn_amo_policy: AMO policy (0=Central, 1=Pinned-Owner, 2=Unowned-Central)
+        :param atomic_op_latency: Cycles for atomic ALU operation
         """
         AbstractRubyCacheHierarchy.__init__(self=self)
         AbstractTwoLevelCacheHierarchy.__init__(
@@ -117,6 +121,8 @@ class PrivateL1PrivateL2CacheHierarchy(
             l2_size=l2_size,
             l2_assoc=l2_assoc,
         )
+        self._hn_amo_policy = hn_amo_policy
+        self._atomic_op_latency = atomic_op_latency
 
     @overrides(AbstractCacheHierarchy)
     def get_coherence_protocol(self):
@@ -141,6 +147,7 @@ class PrivateL1PrivateL2CacheHierarchy(
             cache_line_size=board.get_cache_line_size(),
             clk_domain=board.get_clock_domain(),
             addr_ranges=[AllMemory],
+            hn_amo_policy=self._hn_amo_policy,
         )
         self.directory.ruby_system = self.ruby_system
 
@@ -231,6 +238,7 @@ class PrivateL1PrivateL2CacheHierarchy(
             network=self.ruby_system.network,
             cache_line_size=board.get_cache_line_size(),
             clk_domain=board.get_clock_domain(),
+            atomic_op_latency=self._atomic_op_latency,
         )
 
         if board.has_io_bus():

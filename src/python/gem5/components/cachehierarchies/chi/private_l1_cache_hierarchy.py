@@ -72,15 +72,19 @@ class PrivateL1CacheHierarchy(AbstractRubyCacheHierarchy):
     The network is a simple point-to-point between all of the controllers.
     """
 
-    def __init__(self, size: str, assoc: int) -> None:
+    def __init__(
+        self, size: str, assoc: int, hn_amo_policy: int = 0
+    ) -> None:
         """
         :param size: The size of the priavte I/D caches in the hierarchy.
         :param assoc: The associativity of each cache.
+        :param hn_amo_policy: AMO policy (0=Central, 1=Pinned-Owner, 2=Unowned-Central)
         """
         super().__init__()
 
         self._size = size
         self._assoc = assoc
+        self._hn_amo_policy = hn_amo_policy
 
     @overrides(AbstractCacheHierarchy)
     def get_coherence_protocol(self):
@@ -105,6 +109,7 @@ class PrivateL1CacheHierarchy(AbstractRubyCacheHierarchy):
             cache_line_size=board.get_cache_line_size(),
             clk_domain=board.get_clock_domain(),
             addr_ranges=[AllMemory],
+            hn_amo_policy=self._hn_amo_policy,
         )
         self.directory.ruby_system = self.ruby_system
 

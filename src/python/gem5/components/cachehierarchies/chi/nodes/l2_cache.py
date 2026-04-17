@@ -73,6 +73,7 @@ class L2CacheController(AbstractNode):
         network: RubyNetwork,
         cache_line_size,
         clk_domain: ClockDomain,
+        atomic_op_latency: int = 4,
     ):
         super().__init__(network, cache_line_size)
 
@@ -85,6 +86,8 @@ class L2CacheController(AbstractNode):
         self.send_evictions = False
         self.use_prefetcher = False
         self.prefetcher = NULL
+
+        self.atomic_op_latency = atomic_op_latency
 
         # Only applies to home nodes
         self.is_HN = False
