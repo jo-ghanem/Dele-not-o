@@ -2568,6 +2568,7 @@ action(UpdateDataState_FromADataResp, desc="") {
   if (is_HN && (!tbe.use_delegate) && (tbe.expected_req_resp.hasReceivedData()) &&
       ((tbe.reqType == CHIRequestType:AtomicReturn) ||
        (tbe.reqType == CHIRequestType:AtomicNoReturn))) {
+    DPRINTF(DelegateAMO, "C1:hn_atomic_partial addr=%#x\n", address);
     DPRINTF(RubySlicc, "Atomic before %s\n", tbe.dataBlk);
 
     tbe.oldDataBlk := tbe.dataBlk;
@@ -2777,6 +2778,13 @@ action(Receive_SnpResp, desc="") {
       error("Received unexpected message");
     }
     assert(in_msg.stale == tbe.is_stale);
+    if (in_msg.type == CHIResponseType:SnpResp_UD_AMODone) {
+      DPRINTF(DelegateAMO, "B4:recv_snp_resp_amo_done addr=%#x from=%s\n",
+              address, in_msg.responder);
+    } else if (in_msg.type == CHIResponseType:SnpResp_Retry_AMO) {
+      DPRINTF(DelegateAMO, "B7:recv_snp_resp_retry_amo addr=%#x from=%s\n",
+              address, in_msg.responder);
+    }
   }
 }
 
@@ -4029,6 +4037,8 @@ action(Send_SnpAMO, desc="") {
   assert(is_valid(tbe));
   assert(tbe.dir_ownerExists);
   assert(tbe.dir_ownerIsExcl);
+  DPRINTF(DelegateAMO, "A1:delegate B1:send_snp_amo addr=%#x owner=%s req=%s type=%d\n",
+          address, tbe.dir_owner, tbe.requestor, tbe.reqType);
 
   assert(tbe.expected_snp_resp.expected() == 0);
   clearExpectedSnpResp(tbe);
@@ -4052,8 +4062,11 @@ action(Send_SnpAMO, desc="") {
 // Owner-side: initialize delegated AMO snoop action queue
 action(Initiate_DelegatedAMOSnoop, desc="") {
   if (tbe.dataValid == false || tbe.dir_sharers.count() > 0) {
+    DPRINTF(DelegateAMO, "B2:recv_snp_amo addr=%#x decision=retry dataValid=%d sharers=%d\n",
+            address, tbe.dataValid, tbe.dir_sharers.count());
     tbe.actions.push(Event:SendSnpRespRetryAMO);
   } else {
+    DPRINTF(DelegateAMO, "B2:recv_snp_amo addr=%#x decision=accept\n", address);
     tbe.actions.push(Event:SnpSharedPipe);
     tbe.actions.push(Event:SendDBIDResp_SnpAMO);
     if (tbe.dataToFwdRequestor) {
@@ -4102,17 +4115,18 @@ action(Receive_ReqResp_CaptureAMODest, desc="") {
 action(Execute_DelegatedAMO, desc="") {
   assert(is_valid(tbe));
   assert(tbe.dataValid);
-  DPRINTF(RubySlicc, "Delegated AMO before %s\n", tbe.dataBlk);
+  DPRINTF(DelegateAMO, "C2:owner_atomic_partial addr=%#x before=%s\n", address, tbe.dataBlk);
   tbe.oldDataBlk := tbe.dataBlk;
   tbe.dataBlk.atomicPartial(tbe.dataBlk, tbe.atomic_op);
   tbe.dataBlk.clearAtomicLogEntries();
   tbe.dataDirty := true;
-  DPRINTF(RubySlicc, "Delegated AMO after %s\n", tbe.dataBlk);
+  DPRINTF(DelegateAMO, "C2:owner_atomic_partial addr=%#x after=%s\n", address, tbe.dataBlk);
 }
 
 // Stage 5: owner sends SnpResp_UD_AMODone to HN
 action(Send_SnpRespAMODone, desc="") {
   assert(is_valid(tbe));
+  DPRINTF(DelegateAMO, "B3:send_snp_resp_amo_done addr=%#x to=%s\n", address, tbe.requestor);
   enqueue(rspOutPort, CHIResponseMsg, response_latency) {
     out_msg.addr := address;
     out_msg.type := CHIResponseType:SnpResp_UD_AMODone;
@@ -4124,6 +4138,7 @@ action(Send_SnpRespAMODone, desc="") {
 // Stage 5: owner sends SnpResp_Retry_AMO to HN (fallback)
 action(Send_SnpRespRetryAMO, desc="") {
   assert(is_valid(tbe));
+  DPRINTF(DelegateAMO, "B6:send_snp_resp_retry_amo addr=%#x to=%s\n", address, tbe.requestor);
   enqueue(rspOutPort, CHIResponseMsg, response_latency) {
     out_msg.addr := address;
     out_msg.type := CHIResponseType:SnpResp_Retry_AMO;
@@ -4147,6 +4162,7 @@ action(Forward_Comp_ANR, desc="") {
 action(Recentralize_AMO, desc="") {
   assert(is_valid(tbe));
   assert(tbe.use_delegate);
+  DPRINTF(DelegateAMO, "E1:recentralize addr=%#x req=%s\n", address, tbe.requestor);
 
   // Pop remaining delegate actions from queue
   tbe.actions.pop();  // WaitSnpRespAMODone
