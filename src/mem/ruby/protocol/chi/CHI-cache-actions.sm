@@ -880,6 +880,13 @@ action(Initiate_Atomic_UD, desc="") {
 }
 
 action(Initiate_AtomicReturn_I, desc="") {
+  tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
+                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl;
+  if (tbe.use_delegate) {
+    tbe.actions.push(Event:SendSnpAMO);
+    tbe.actions.push(Event:WaitSnpRespAMODone);
+    return;
+  }
   if (policy_type == 0){ // ALL NEAR
     tbe.actions.push(Event:SendReadUnique);
     tbe.actions.push(Event:WriteFEPipe);
@@ -900,6 +907,14 @@ action(Initiate_AtomicReturn_I, desc="") {
 }
 
 action(Initiate_AtomicNoReturn_I, desc="") {
+  tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
+                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl;
+  if (tbe.use_delegate) {
+    tbe.actions.push(Event:SendSnpAMO);
+    tbe.actions.push(Event:WaitSnpRespAMODone);
+    tbe.actions.push(Event:Forward_Comp_ANR);
+    return;
+  }
   if (policy_type == 0){ // ALL NEAR
     tbe.actions.push(Event:SendReadUnique);
     tbe.actions.push(Event:WriteFEPipe);
@@ -1115,10 +1130,16 @@ action(Initiate_WriteUnique_Forward, desc="") {
 }
 
 action(Initiate_AtomicReturn_LocalWrite, desc="") {
+  tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
+                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl;
+  if (tbe.use_delegate) {
+    tbe.actions.push(Event:SendSnpAMO);
+    tbe.actions.push(Event:WaitSnpRespAMODone);
+    return;
+  }
   if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
     tbe.actions.push(Event:SendSnpUnique);
   } else if (tbe.dir_sharers.count() > 0){
-    // no one will send us data unless we explicitly ask
     tbe.actions.push(Event:SendSnpUniqueRetToSrc);
   }
   tbe.actions.push(Event:SendDBIDResp_AR);
@@ -1131,10 +1152,16 @@ action(Initiate_AtomicReturn_LocalWrite, desc="") {
 }
 
 action(Initiate_AtomicReturn_WriteBack, desc="") {
+  tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
+                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl;
+  if (tbe.use_delegate) {
+    tbe.actions.push(Event:SendSnpAMO);
+    tbe.actions.push(Event:WaitSnpRespAMODone);
+    return;
+  }
   if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
     tbe.actions.push(Event:SendSnpUnique);
   } else if (tbe.dir_sharers.count() > 0){
-    // no one will send us data unless we explicitly ask
     tbe.actions.push(Event:SendSnpUniqueRetToSrc);
   }
   tbe.actions.push(Event:SendDBIDResp_AR);
@@ -1149,10 +1176,17 @@ action(Initiate_AtomicReturn_WriteBack, desc="") {
 }
 
 action(Initiate_AtomicNoReturn_LocalWrite, desc="") {
+  tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
+                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl;
+  if (tbe.use_delegate) {
+    tbe.actions.push(Event:SendSnpAMO);
+    tbe.actions.push(Event:WaitSnpRespAMODone);
+    tbe.actions.push(Event:Forward_Comp_ANR);
+    return;
+  }
   if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
     tbe.actions.push(Event:SendSnpUnique);
   } else if (tbe.dir_sharers.count() > 0){
-    // no one will send us data unless we explicitly ask
     tbe.actions.push(Event:SendSnpUniqueRetToSrc);
   }
   if (comp_anr) {
@@ -1170,10 +1204,17 @@ action(Initiate_AtomicNoReturn_LocalWrite, desc="") {
 }
 
 action(Initiate_AtomicNoReturn_WriteBack, desc="") {
+  tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
+                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl;
+  if (tbe.use_delegate) {
+    tbe.actions.push(Event:SendSnpAMO);
+    tbe.actions.push(Event:WaitSnpRespAMODone);
+    tbe.actions.push(Event:Forward_Comp_ANR);
+    return;
+  }
   if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
     tbe.actions.push(Event:SendSnpUnique);
   } else if (tbe.dir_sharers.count() > 0){
-    // no one will send us data unless we explicitly ask
     tbe.actions.push(Event:SendSnpUniqueRetToSrc);
   }
   if (comp_anr) {
@@ -2496,7 +2537,7 @@ action(UpdateDataState_FromWUDataResp, desc="") {
 
 action(UpdateDataState_FromADataResp, desc="") {
   assert(is_valid(tbe));
-  if (is_HN && (tbe.expected_req_resp.hasReceivedData()) &&
+  if (is_HN && (!tbe.use_delegate) && (tbe.expected_req_resp.hasReceivedData()) &&
       ((tbe.reqType == CHIRequestType:AtomicReturn) ||
        (tbe.reqType == CHIRequestType:AtomicNoReturn))) {
     DPRINTF(RubySlicc, "Atomic before %s\n", tbe.dataBlk);
