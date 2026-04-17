@@ -995,7 +995,7 @@ transition(UD_T, {Global_Eviction, Local_Eviction, LocalHN_Eviction}, UD) {
 
 transition(BUSY_BLKD,
             {SnpCleanInvalid,SnpShared,SnpUnique,SnpSharedFwd,SnpUniqueFwd,
-            SnpOnce,SnpOnceFwd,SnpNotSharedDirtyFwd}) {
+            SnpOnce,SnpOnceFwd,SnpNotSharedDirtyFwd,SnpAMO}) {
   StallSnoop;
 }
 
@@ -1004,12 +1004,58 @@ transition({BUSY_BLKD,BUSY_INTR}, SnpStalled) {
 }
 
 transition(UD_T, {SnpCleanInvalid,SnpShared,SnpUnique,SnpSharedFwd,SnpUniqueFwd,
-                  SnpNotSharedDirtyFwd}) {
+                  SnpNotSharedDirtyFwd,SnpAMO}) {
   StallSnoop_NoTBE;
 }
 
 transition({BUSY_BLKD,BUSY_INTR}, ActionStalledOnHazard) {
   StallActionOnHazard;
+}
+
+// Delegated AMO trigger stubs (replaced in Stages 2-5)
+
+transition(BUSY_BLKD, SendSnpAMO) {
+  error("Delegated AMO: SendSnpAMO not yet implemented");
+}
+
+transition({BUSY_BLKD,BUSY_INTR}, WaitSnpRespAMODone) {
+  error("Delegated AMO: WaitSnpRespAMODone not yet implemented");
+}
+
+transition(BUSY_BLKD, SendDBIDResp_SnpAMO) {
+  error("Delegated AMO: SendDBIDResp_SnpAMO not yet implemented");
+}
+
+transition(BUSY_BLKD, SendCompData_SnpAMO) {
+  error("Delegated AMO: SendCompData_SnpAMO not yet implemented");
+}
+
+transition(BUSY_BLKD, Execute_DelegatedAMO) {
+  error("Delegated AMO: Execute_DelegatedAMO not yet implemented");
+}
+
+transition(BUSY_BLKD, SendSnpRespAMODone) {
+  error("Delegated AMO: SendSnpRespAMODone not yet implemented");
+}
+
+transition(BUSY_BLKD, SendSnpRespRetryAMO) {
+  error("Delegated AMO: SendSnpRespRetryAMO not yet implemented");
+}
+
+transition(BUSY_BLKD, Forward_Comp_ANR) {
+  error("Delegated AMO: Forward_Comp_ANR not yet implemented");
+}
+
+transition(BUSY_BLKD, Recentralize_AMO) {
+  error("Delegated AMO: Recentralize_AMO not yet implemented");
+}
+
+transition({BUSY_BLKD,BUSY_INTR}, SnpResp_UD_AMODone) {
+  error("Delegated AMO: SnpResp_UD_AMODone not yet implemented");
+}
+
+transition({BUSY_BLKD,BUSY_INTR}, SnpResp_Retry_AMO) {
+  error("Delegated AMO: SnpResp_Retry_AMO not yet implemented");
 }
 
 // Trigger-specifc transitions

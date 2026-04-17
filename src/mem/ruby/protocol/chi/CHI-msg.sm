@@ -85,6 +85,7 @@ enumeration(CHIRequestType, desc="") {
   SnpDvmOpSync_P2;
   SnpDvmOpNonSync_P1;
   SnpDvmOpNonSync_P2;
+  SnpAMO;
 
   WriteNoSnpPtl;
   WriteNoSnp;
@@ -155,6 +156,8 @@ enumeration(CHIResponseType, desc="...") {
   SnpResp_UD_Fwded_I;
   SnpResp_SC_Fwded_I;
   SnpResp_SD_Fwded_I;
+  SnpResp_UD_AMODone;
+  SnpResp_Retry_AMO;
 
   RetryAck;
   PCrdGrant;

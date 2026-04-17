@@ -137,6 +137,8 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // Present Near execites all Atomics at L1 except when state is I (set to 2)
   int policy_type := 0;
 
+  // Delegated AMO policy (0=All-Central, 1=Pinned-Owner, 2=Unowned-Central)
+  int hn_amo_policy := 0;
 
   // Use separate Comp/DBIDResp responses for WriteUnique
   bool comp_wu := "False";
@@ -338,6 +340,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     SnpUniqueFwd,                desc="", in_trans="yes";
     SnpOnce,                     desc="", in_trans="yes";
     SnpOnceFwd,                  desc="", in_trans="yes";
+    SnpAMO,                      desc="", in_trans="yes";
     SnpStalled, desc="", in_trans="yes"; // A snoop stall triggered from the inport
     StashOnceShared,             desc="", in_trans="yes"; // Just discarding the hint
     StashOnceUnique,             desc="", in_trans="yes"; // Just discarding the hint
@@ -369,6 +372,8 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     SnpResp_UD_Fwded_I,      desc="";
     SnpResp_SC_Fwded_I,      desc="";
     SnpResp_SD_Fwded_I,      desc="";
+    SnpResp_UD_AMODone,      desc="";
+    SnpResp_Retry_AMO,       desc="";
     RetryAck,                desc="";
     RetryAck_PoC,            desc="";
     PCrdGrant,               desc="";
@@ -502,6 +507,17 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     SendCompDBIDResp_ANR,  desc="Ack ANR with CompDBIDResp and set expected data";
     SendDBIDResp_ANR,      desc="Ack ANR with DBIDResp and set expected data";
     SendComp_ANR,          desc="Ack ANR completion";
+
+    // Delegated AMO events
+    SendSnpAMO,              desc="Send SnpAMO to owner for delegated atomic";
+    WaitSnpRespAMODone,      desc="Wait for owner to complete delegated atomic";
+    SendDBIDResp_SnpAMO,     desc="Owner: send DBIDResp to requester for AMO operands";
+    SendCompData_SnpAMO,     desc="Owner: send CompData_I pre-image to requester (AR only)";
+    Execute_DelegatedAMO,    desc="Owner: execute atomicPartial locally";
+    SendSnpRespAMODone,      desc="Owner: notify HN that delegated AMO is complete";
+    SendSnpRespRetryAMO,     desc="Owner: refuse SnpAMO (state changed)";
+    Forward_Comp_ANR,        desc="HN: forward Comp to requester after delegated ANR";
+    Recentralize_AMO,        desc="HN: fall back to centralized AMO after owner retry";
 
     // Dataless requests
     SendEvict,      out_trans="yes", desc="Send a Evict";
@@ -661,6 +677,9 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     MachineID fwdRequestor, desc="Requestor to receive data on fwding snoops";
     bool use_DMT,           desc="Use DMT for this transaction";
     bool use_DCT,           desc="Use DCT for this transaction";
+    bool use_delegate,      desc="Use delegated AMO for this transaction";
+    bool dataToFwdRequestor, desc="Data should be forwarded to fwdRequestor";
+    MachineID amo_operand_dest, desc="Destination for AMO operand NCBWrData";
 
     // if either is set prefetchers are not notified on miss/hit/fill and
     // demand hit/miss stats are not incremented

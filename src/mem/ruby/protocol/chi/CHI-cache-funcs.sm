@@ -522,9 +522,11 @@ TBE allocateSnoopTBE(Addr addr, CHIRequestMsg in_msg), return_by_pointer="yes" {
   tbe.txnId := in_msg.txnId;
 
   tbe.snpNeedsData := in_msg.retToSrc;
+  tbe.dataToFwdRequestor := in_msg.dataToFwdRequestor;
 
   tbe.use_DMT := false;
   tbe.use_DCT := false;
+  tbe.use_delegate := false;
 
   return tbe;
 }
@@ -1348,6 +1350,10 @@ Event respToEvent (CHIResponseType type, TBE tbe) {
     return Event:SnpResp_UD_Fwded_I;
   } else if (type == CHIResponseType:SnpResp_UC_Fwded_I) {
     return Event:SnpResp_UC_Fwded_I;
+  } else if (type == CHIResponseType:SnpResp_UD_AMODone) {
+    return Event:SnpResp_UD_AMODone;
+  } else if (type == CHIResponseType:SnpResp_Retry_AMO) {
+    return Event:SnpResp_Retry_AMO;
   } else if (type == CHIResponseType:RetryAck) {
     if (is_HN) {
       if (on_hazard) {
@@ -1456,6 +1462,8 @@ Event snpToEvent (CHIRequestType type) {
     return Event:SnpOnce;
   } else if (type == CHIRequestType:SnpOnceFwd) {
     return Event:SnpOnceFwd;
+  } else if (type == CHIRequestType:SnpAMO) {
+    return Event:SnpAMO;
   } else if (type == CHIRequestType:SnpDvmOpSync_P1) {
     return Event:SnpDvmOpSync_P1;
   } else if (type == CHIRequestType:SnpDvmOpSync_P2) {
