@@ -4148,6 +4148,7 @@ action(Recentralize_AMO, desc="") {
 
   tbe.use_delegate := false;
   tbe.dataToBeInvalid := false;
+  tbe.doCacheFill := true;
   clearExpectedSnpResp(tbe);
 
   // Invalidate exclusive owner via SnpUnique (fetches data if HN has none)
