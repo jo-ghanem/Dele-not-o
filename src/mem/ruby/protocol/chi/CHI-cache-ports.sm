@@ -108,6 +108,8 @@ in_port(datInPort, CHIDataMsg, datIn, rank=9,
       // We don't have any transactions that use data requests
       assert(!in_msg.usesTxnId);
       assert((in_msg.bitMask.count() <= data_channel_size) && (in_msg.bitMask.count() > 0));
+      DPRINTF(RubySlicc, "datInPort: addr=%#x type=%d from=%s\n",
+              in_msg.addr, in_msg.type, in_msg.responder);
       trigger(dataToEvent(in_msg.type), in_msg.addr,
               getCacheEntry(in_msg.addr), getCurrentActiveTBE(in_msg.addr));
     }

@@ -2221,6 +2221,9 @@ action(Receive_ReqDataResp, desc="") {
   peek(datInPort, CHIDataMsg) {
     // Decrement pending
     if (tbe.expected_req_resp.receiveData(in_msg.type) == false) {
+      DPRINTF(RubySlicc, "DIAG: addr=%#x datType=%d reqType=%d use_delegate=%d expected_req=%d expected_snp=%d\n",
+              address, in_msg.type, tbe.reqType, tbe.use_delegate,
+              tbe.expected_req_resp.expected(), tbe.expected_snp_resp.expected());
       error("Received unexpected message");
     }
     // Copy data to tbe only if we didn't have valid data or the received
