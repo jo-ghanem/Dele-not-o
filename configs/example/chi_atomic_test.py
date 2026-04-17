@@ -89,11 +89,8 @@ board = TestBoard(
     cache_hierarchy=cache_hierarchy,
 )
 
-root = Root(full_system=False, system=board)
-root.system.mem_mode = "timing"
-
 m5.ticks.setGlobalFrequency("1ns")
-board._pre_instantiate()
+root = board._pre_instantiate()
 m5.instantiate()
 
 board._post_instantiate()
