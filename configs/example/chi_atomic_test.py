@@ -19,7 +19,6 @@ from gem5.components.processors.abstract_generator import AbstractGenerator
 from gem5.components.processors.abstract_generator_core import (
     AbstractGeneratorCore,
 )
-from gem5.simulate.simulator import Simulator
 from gem5.utils.requires import requires
 
 requires(coherence_protocol_required=CoherenceProtocol.CHI)
@@ -90,10 +89,17 @@ board = TestBoard(
     cache_hierarchy=cache_hierarchy,
 )
 
-simulator = Simulator(board=board)
+root = Root(full_system=False, system=board)
+root.system.mem_mode = "timing"
+
+m5.ticks.setGlobalFrequency("1ns")
+m5.instantiate()
+
+board._post_instantiate()
+
 print(
     f"Starting CHI atomic test: hn_amo_policy={args.hn_amo_policy}, "
     f"percent_atomic={args.percent_atomic}"
 )
-simulator.run()
-print("Test completed successfully!")
+exit_event = m5.simulate()
+print(f"Exiting @ tick {m5.curTick()} because {exit_event.getCause()}")
