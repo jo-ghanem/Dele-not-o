@@ -1037,6 +1037,7 @@ transition({BUSY_BLKD,BUSY_INTR}, WaitSnpRespAMODone) {
 
 transition(BUSY_BLKD, SendDBIDResp_SnpAMO) {
   Pop_TriggerQueue;
+  ExpectNCBWrData_A;
   Send_DBIDResp_SnpAMO;
   ProcessNextState_ClearPending;
 }
@@ -1047,34 +1048,51 @@ transition(BUSY_BLKD, SendCompData_SnpAMO) {
   ProcessNextState_ClearPending;
 }
 
-// Delegated AMO: stubs for Stages 4-5
+// Delegated AMO: owner-side execute and completion
 
 transition(BUSY_BLKD, Execute_DelegatedAMO) {
-  Stub_DelegatedAMO;
+  Pop_TriggerQueue;
+  Execute_DelegatedAMO;
+  ProcessNextState_ClearPending;
 }
 
 transition(BUSY_BLKD, SendSnpRespAMODone) {
-  Stub_DelegatedAMO;
+  Pop_TriggerQueue;
+  Send_SnpRespAMODone;
+  ProcessNextState_ClearPending;
 }
 
 transition(BUSY_BLKD, SendSnpRespRetryAMO) {
-  Stub_DelegatedAMO;
+  Pop_TriggerQueue;
+  Send_SnpRespRetryAMO;
+  ProcessNextState_ClearPending;
 }
 
+// Delegated AMO: HN-side completion
+
 transition(BUSY_BLKD, Forward_Comp_ANR) {
-  Stub_DelegatedAMO;
+  Pop_TriggerQueue;
+  Forward_Comp_ANR;
+  ProcessNextState_ClearPending;
 }
 
 transition(BUSY_BLKD, Recentralize_AMO) {
-  Stub_DelegatedAMO;
+  Pop_TriggerQueue;
+  Recentralize_AMO;
+  ProcessNextState_ClearPending;
 }
 
 transition({BUSY_BLKD,BUSY_INTR}, SnpResp_UD_AMODone) {
-  Stub_DelegatedAMO;
+  Receive_SnpResp;
+  Pop_RespInQueue;
+  ProcessNextState;
 }
 
 transition({BUSY_BLKD,BUSY_INTR}, SnpResp_Retry_AMO) {
-  Stub_DelegatedAMO;
+  Receive_SnpResp;
+  Recentralize_AMO;
+  Pop_RespInQueue;
+  ProcessNextState;
 }
 
 // Trigger-specifc transitions
@@ -1658,6 +1676,7 @@ transition(BUSY_INTR, CompDBIDResp, BUSY_BLKD) {
 transition({BUSY_INTR,BUSY_BLKD}, DBIDResp, BUSY_BLKD) {
   Receive_ReqResp;
   Receive_ReqResp_CopyDBID;
+  Receive_ReqResp_CaptureAMODest;
   Receive_ReqResp_WUNeedComp;
   Pop_RespInQueue;
   ProcessNextState;

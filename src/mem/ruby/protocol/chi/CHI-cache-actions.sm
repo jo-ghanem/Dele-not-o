@@ -885,6 +885,7 @@ action(Initiate_AtomicReturn_I, desc="") {
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
+    tbe.actions.pushNB(Event:TagArrayWrite);
   } else if (policy_type == 0){ // ALL NEAR
     tbe.actions.push(Event:SendReadUnique);
     tbe.actions.push(Event:WriteFEPipe);
@@ -911,6 +912,7 @@ action(Initiate_AtomicNoReturn_I, desc="") {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
     tbe.actions.push(Event:Forward_Comp_ANR);
+    tbe.actions.pushNB(Event:TagArrayWrite);
   } else if (policy_type == 0){ // ALL NEAR
     tbe.actions.push(Event:SendReadUnique);
     tbe.actions.push(Event:WriteFEPipe);
@@ -1131,6 +1133,7 @@ action(Initiate_AtomicReturn_LocalWrite, desc="") {
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
+    tbe.actions.pushNB(Event:TagArrayWrite);
   } else {
     if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
       tbe.actions.push(Event:SendSnpUnique);
@@ -1153,6 +1156,7 @@ action(Initiate_AtomicReturn_WriteBack, desc="") {
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
+    tbe.actions.pushNB(Event:TagArrayWrite);
   } else {
     if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
       tbe.actions.push(Event:SendSnpUnique);
@@ -1178,6 +1182,7 @@ action(Initiate_AtomicNoReturn_LocalWrite, desc="") {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
     tbe.actions.push(Event:Forward_Comp_ANR);
+    tbe.actions.pushNB(Event:TagArrayWrite);
   } else {
     if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
       tbe.actions.push(Event:SendSnpUnique);
@@ -1206,6 +1211,7 @@ action(Initiate_AtomicNoReturn_WriteBack, desc="") {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
     tbe.actions.push(Event:Forward_Comp_ANR);
+    tbe.actions.pushNB(Event:TagArrayWrite);
   } else {
     if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
       tbe.actions.push(Event:SendSnpUnique);
@@ -2203,7 +2209,8 @@ action(Receive_ReqDataResp, desc="") {
     // data is dirty
     if ((in_msg.type == CHIDataType:NCBWrData) &&
          ((tbe.reqType == CHIRequestType:AtomicReturn) ||
-          (tbe.reqType == CHIRequestType:AtomicNoReturn))){
+          (tbe.reqType == CHIRequestType:AtomicNoReturn) ||
+          (tbe.reqType == CHIRequestType:SnpAMO))){
       // DO NOTHING
     } else if ((in_msg.type == CHIDataType:CompData_I) &&
                ((tbe.reqType == CHIRequestType:AtomicReturn) ||
@@ -2513,7 +2520,8 @@ action(UpdateDataState_FromWUDataResp, desc="") {
   assert(is_valid(tbe));
   if (tbe.expected_req_resp.hasReceivedData() &&
        (tbe.reqType != CHIRequestType:AtomicReturn) &&
-       (tbe.reqType != CHIRequestType:AtomicNoReturn)) {
+       (tbe.reqType != CHIRequestType:AtomicNoReturn) &&
+       (tbe.reqType != CHIRequestType:SnpAMO)) {
     assert(tbe.dataBlkValid.test(addressOffset(tbe.accAddr, tbe.addr)));
     assert(tbe.dataBlkValid.test(addressOffset(tbe.accAddr, tbe.addr)
                                   + tbe.accSize - 1));
@@ -2713,7 +2721,10 @@ action(Receive_ReqResp, desc="") {
 }
 
 action(Receive_ReqResp_WUNeedComp, desc="") {
-  tbe.defer_expected_comp := true;
+  if ((tbe.reqType != CHIRequestType:AtomicReturn) &&
+      (tbe.reqType != CHIRequestType:AtomicNoReturn)) {
+    tbe.defer_expected_comp := true;
+  }
 }
 
 action(Receive_ReqResp_WUComp, desc="") {
@@ -2927,14 +2938,14 @@ action(CheckWUComp, desc="") {
 action(Send_ARData, desc="") {
   assert(is_valid(tbe));
   tbe.snd_msgType := CHIDataType:NCBWrData;
-  tbe.snd_destination := mapAddressToDownstreamMachine(tbe.addr);
+  tbe.snd_destination := tbe.amo_operand_dest;
   setupPendingAtomicSend(tbe);
 }
 
 action(Send_ANRData, desc="") {
   assert(is_valid(tbe));
   tbe.snd_msgType := CHIDataType:NCBWrData;
-  tbe.snd_destination := mapAddressToDownstreamMachine(tbe.addr);
+  tbe.snd_destination := tbe.amo_operand_dest;
   setupPendingAtomicSend(tbe);
 }
 
@@ -4019,8 +4030,12 @@ action(Initiate_DelegatedAMOSnoop, desc="") {
   tbe.actions.push(Event:SnpSharedPipe);
   tbe.actions.push(Event:SendDBIDResp_SnpAMO);
   if (tbe.dataToFwdRequestor) {
-    tbe.actions.push(Event:SendCompData_SnpAMO);
+    tbe.actions.pushNB(Event:SendCompData_SnpAMO);
   }
+  tbe.actions.push(Event:DelayAtomic);
+  tbe.actions.push(Event:Execute_DelegatedAMO);
+  tbe.actions.push(Event:SendSnpRespAMODone);
+  tbe.actions.pushNB(Event:TagArrayWrite);
 }
 
 // Owner-side: send DBIDResp to original requester
@@ -4044,9 +4059,61 @@ action(Send_CompData_SnpAMO, desc="") {
   setupPendingSend(tbe);
 }
 
-// Stub for unimplemented delegated AMO actions (Stages 4-5)
-action(Stub_DelegatedAMO, desc="Placeholder for unimplemented delegated AMO actions") {
-  error("Delegated AMO action not yet implemented");
+// Stage 4: requester captures AMO operand destination from DBIDResp
+action(Receive_ReqResp_CaptureAMODest, desc="") {
+  peek(rspInPort, CHIResponseMsg) {
+    tbe.amo_operand_dest := in_msg.responder;
+  }
+}
+
+// Stage 5: owner executes the delegated AMO
+action(Execute_DelegatedAMO, desc="") {
+  assert(is_valid(tbe));
+  assert(tbe.dataValid);
+  DPRINTF(RubySlicc, "Delegated AMO before %s\n", tbe.dataBlk);
+  tbe.oldDataBlk := tbe.dataBlk;
+  tbe.dataBlk.atomicPartial(tbe.dataBlk, tbe.atomic_op);
+  tbe.dataBlk.clearAtomicLogEntries();
+  tbe.dataDirty := true;
+  DPRINTF(RubySlicc, "Delegated AMO after %s\n", tbe.dataBlk);
+}
+
+// Stage 5: owner sends SnpResp_UD_AMODone to HN
+action(Send_SnpRespAMODone, desc="") {
+  assert(is_valid(tbe));
+  enqueue(rspOutPort, CHIResponseMsg, response_latency) {
+    out_msg.addr := address;
+    out_msg.type := CHIResponseType:SnpResp_UD_AMODone;
+    out_msg.responder := machineID;
+    out_msg.Destination.add(tbe.requestor);
+  }
+}
+
+// Stage 5: owner sends SnpResp_Retry_AMO to HN (fallback)
+action(Send_SnpRespRetryAMO, desc="") {
+  assert(is_valid(tbe));
+  enqueue(rspOutPort, CHIResponseMsg, response_latency) {
+    out_msg.addr := address;
+    out_msg.type := CHIResponseType:SnpResp_Retry_AMO;
+    out_msg.responder := machineID;
+    out_msg.Destination.add(tbe.requestor);
+  }
+}
+
+// Stage 5: HN forwards Comp to requester for AtomicNoReturn
+action(Forward_Comp_ANR, desc="") {
+  assert(is_valid(tbe));
+  enqueue(rspOutPort, CHIResponseMsg, response_latency) {
+    out_msg.addr := address;
+    out_msg.type := CHIResponseType:Comp;
+    out_msg.responder := machineID;
+    out_msg.Destination.add(tbe.requestor);
+  }
+}
+
+// Stage 5: HN re-issues centralized AMO after owner retry
+action(Recentralize_AMO, desc="") {
+  error("Delegated AMO: Recentralize not yet implemented");
 }
 
 //////////////////////////////////
