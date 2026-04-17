@@ -4030,17 +4030,17 @@ action(Initiate_DelegatedAMOSnoop, desc="") {
   if (tbe.dataValid == false) {
     tbe.actions.push(Event:SendSnpRespRetryAMO);
     tbe.actions.pushNB(Event:TagArrayWrite);
-    return;
+  } else {
+    tbe.actions.push(Event:SnpSharedPipe);
+    tbe.actions.push(Event:SendDBIDResp_SnpAMO);
+    if (tbe.dataToFwdRequestor) {
+      tbe.actions.pushNB(Event:SendCompData_SnpAMO);
+    }
+    tbe.actions.push(Event:DelayAtomic);
+    tbe.actions.push(Event:Execute_DelegatedAMO);
+    tbe.actions.push(Event:SendSnpRespAMODone);
+    tbe.actions.pushNB(Event:TagArrayWrite);
   }
-  tbe.actions.push(Event:SnpSharedPipe);
-  tbe.actions.push(Event:SendDBIDResp_SnpAMO);
-  if (tbe.dataToFwdRequestor) {
-    tbe.actions.pushNB(Event:SendCompData_SnpAMO);
-  }
-  tbe.actions.push(Event:DelayAtomic);
-  tbe.actions.push(Event:Execute_DelegatedAMO);
-  tbe.actions.push(Event:SendSnpRespAMODone);
-  tbe.actions.pushNB(Event:TagArrayWrite);
 }
 
 // Owner-side: send DBIDResp to original requester
