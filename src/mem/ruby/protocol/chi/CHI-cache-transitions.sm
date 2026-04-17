@@ -1023,9 +1023,11 @@ transition({UD,SD,UC,SC,UD_RSC,SD_RSC,UC_RSC,SC_RSC,UD_RSD,SD_RSD},
   ProcessNextState;
 }
 
-// Stall SnpAMO in states where copyCacheAndDir does NOT load data into TBE
+// Stall SnpAMO in states where copyCacheAndDir does NOT load data into TBE.
+// Use StallSnoop_NoTBE: after Final restores a compound state (e.g. UC_RU),
+// the TBE may not exist yet (stalled request pending replay).
 transition({UC_RU,UD_RU,RU,RUSD,RUSC,RSD,RSC}, SnpAMO) {
-  StallSnoop;
+  StallSnoop_NoTBE;
 }
 
 transition(BUSY_INTR, SnpAMO, BUSY_BLKD) {
