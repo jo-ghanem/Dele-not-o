@@ -4047,7 +4047,6 @@ action(Send_SnpAMO, desc="") {
 action(Initiate_DelegatedAMOSnoop, desc="") {
   if (tbe.dataValid == false) {
     tbe.actions.push(Event:SendSnpRespRetryAMO);
-    tbe.actions.pushNB(Event:TagArrayWrite);
   } else {
     tbe.actions.push(Event:SnpSharedPipe);
     tbe.actions.push(Event:SendDBIDResp_SnpAMO);
@@ -4057,6 +4056,10 @@ action(Initiate_DelegatedAMOSnoop, desc="") {
     tbe.actions.push(Event:DelayAtomic);
     tbe.actions.push(Event:Execute_DelegatedAMO);
     tbe.actions.push(Event:SendSnpRespAMODone);
+  }
+  if (tbe.is_req_hazard || tbe.is_repl_hazard) {
+    tbe.actions.push(Event:RestoreFromHazard);
+  } else {
     tbe.actions.pushNB(Event:TagArrayWrite);
   }
 }
