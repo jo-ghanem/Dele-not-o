@@ -1012,14 +1012,20 @@ transition({BUSY_BLKD,BUSY_INTR}, ActionStalledOnHazard) {
   StallActionOnHazard;
 }
 
-// Delegated AMO: owner-side accept SnpAMO (mirrors SnpUnique state set)
+// Delegated AMO: owner-side accept SnpAMO only in states where
+// copyCacheAndDir loads data into the TBE (tbe.dataValid == true)
 
-transition({UD,SD,UC,SC,UD_RSC,SD_RSC,UC_RSC,UD_RU,UC_RU,RU,RUSD,RUSC,RSD,UD_RSD,SD_RSD,SC_RSC,RSC},
+transition({UD,SD,UC,SC,UD_RSC,SD_RSC,UC_RSC,SC_RSC,UD_RSD,SD_RSD},
            SnpAMO, BUSY_BLKD) {
   Initiate_Snoop;
   Initiate_DelegatedAMOSnoop;
   Pop_SnoopRdyQueue;
   ProcessNextState;
+}
+
+// Stall SnpAMO in states where copyCacheAndDir does NOT load data into TBE
+transition({UC_RU,UD_RU,RU,RUSD,RUSC,RSD,RSC}, SnpAMO) {
+  StallSnoop;
 }
 
 transition(BUSY_INTR, SnpAMO, BUSY_BLKD) {

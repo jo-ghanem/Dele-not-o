@@ -4027,6 +4027,11 @@ action(Send_SnpAMO, desc="") {
 
 // Owner-side: initialize delegated AMO snoop action queue
 action(Initiate_DelegatedAMOSnoop, desc="") {
+  if (tbe.dataValid == false) {
+    tbe.actions.push(Event:SendSnpRespRetryAMO);
+    tbe.actions.pushNB(Event:TagArrayWrite);
+    return;
+  }
   tbe.actions.push(Event:SnpSharedPipe);
   tbe.actions.push(Event:SendDBIDResp_SnpAMO);
   if (tbe.dataToFwdRequestor) {
