@@ -1012,10 +1012,18 @@ transition({BUSY_BLKD,BUSY_INTR}, ActionStalledOnHazard) {
   StallActionOnHazard;
 }
 
-// Delegated AMO: owner-side accept SnpAMO in stable exclusive states
+// Delegated AMO: owner-side accept SnpAMO (mirrors SnpUnique state set)
 
-transition({UC,UD}, SnpAMO, BUSY_BLKD) {
+transition({UD,SD,UC,SC,UD_RSC,SD_RSC,UC_RSC,UD_RU,UC_RU,RU,RUSD,RUSC,RSD,UD_RSD,SD_RSD,SC_RSC,RSC},
+           SnpAMO, BUSY_BLKD) {
   Initiate_Snoop;
+  Initiate_DelegatedAMOSnoop;
+  Pop_SnoopRdyQueue;
+  ProcessNextState;
+}
+
+transition(BUSY_INTR, SnpAMO, BUSY_BLKD) {
+  Initiate_Snoop_Hazard;
   Initiate_DelegatedAMOSnoop;
   Pop_SnoopRdyQueue;
   ProcessNextState;
