@@ -1047,6 +1047,7 @@ transition(BUSY_BLKD, SendSnpAMO) {
 
 transition({BUSY_BLKD,BUSY_INTR}, WaitSnpRespAMODone) {
   Pop_TriggerQueue;
+  ProcessNextState_ClearPending;
 }
 
 // Delegated AMO: owner-side trigger transitions
