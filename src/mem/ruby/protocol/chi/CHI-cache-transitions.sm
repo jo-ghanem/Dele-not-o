@@ -1015,47 +1015,47 @@ transition({BUSY_BLKD,BUSY_INTR}, ActionStalledOnHazard) {
 // Delegated AMO trigger stubs (replaced in Stages 2-5)
 
 transition(BUSY_BLKD, SendSnpAMO) {
-  error("Delegated AMO: SendSnpAMO not yet implemented");
+  Stub_DelegatedAMO;
 }
 
 transition({BUSY_BLKD,BUSY_INTR}, WaitSnpRespAMODone) {
-  error("Delegated AMO: WaitSnpRespAMODone not yet implemented");
+  Stub_DelegatedAMO;
 }
 
 transition(BUSY_BLKD, SendDBIDResp_SnpAMO) {
-  error("Delegated AMO: SendDBIDResp_SnpAMO not yet implemented");
+  Stub_DelegatedAMO;
 }
 
 transition(BUSY_BLKD, SendCompData_SnpAMO) {
-  error("Delegated AMO: SendCompData_SnpAMO not yet implemented");
+  Stub_DelegatedAMO;
 }
 
 transition(BUSY_BLKD, Execute_DelegatedAMO) {
-  error("Delegated AMO: Execute_DelegatedAMO not yet implemented");
+  Stub_DelegatedAMO;
 }
 
 transition(BUSY_BLKD, SendSnpRespAMODone) {
-  error("Delegated AMO: SendSnpRespAMODone not yet implemented");
+  Stub_DelegatedAMO;
 }
 
 transition(BUSY_BLKD, SendSnpRespRetryAMO) {
-  error("Delegated AMO: SendSnpRespRetryAMO not yet implemented");
+  Stub_DelegatedAMO;
 }
 
 transition(BUSY_BLKD, Forward_Comp_ANR) {
-  error("Delegated AMO: Forward_Comp_ANR not yet implemented");
+  Stub_DelegatedAMO;
 }
 
 transition(BUSY_BLKD, Recentralize_AMO) {
-  error("Delegated AMO: Recentralize_AMO not yet implemented");
+  Stub_DelegatedAMO;
 }
 
 transition({BUSY_BLKD,BUSY_INTR}, SnpResp_UD_AMODone) {
-  error("Delegated AMO: SnpResp_UD_AMODone not yet implemented");
+  Stub_DelegatedAMO;
 }
 
 transition({BUSY_BLKD,BUSY_INTR}, SnpResp_Retry_AMO) {
-  error("Delegated AMO: SnpResp_Retry_AMO not yet implemented");
+  Stub_DelegatedAMO;
 }
 
 // Trigger-specifc transitions

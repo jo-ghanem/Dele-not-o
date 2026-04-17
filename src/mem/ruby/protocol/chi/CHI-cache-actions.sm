@@ -3950,6 +3950,13 @@ action(SnpOncePipe, desc="") {
 }
 
 //////////////////////////////////
+// Delegated AMO stub (replaced in Stages 2-5)
+
+action(Stub_DelegatedAMO, desc="Placeholder for unimplemented delegated AMO actions") {
+  error("Delegated AMO action not yet implemented");
+}
+
+//////////////////////////////////
 // DVM Actions
 
 action(Send_DvmTlbi, desc="") {
