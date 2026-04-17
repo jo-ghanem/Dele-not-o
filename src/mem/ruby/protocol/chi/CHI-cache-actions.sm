@@ -1353,6 +1353,9 @@ action(Initiate_CopyBack, desc="") {
     assert(tbe.reqType == CHIRequestType:WriteEvictFull);
     tbe.expected_req_resp.addExpectedDataType(CHIDataType:CBWrData_UC);
     tbe.expected_req_resp.addExpectedDataType(CHIDataType:CBWrData_SC);
+    // SnpAMO may dirty the line between WriteEvictFull send and data send
+    tbe.expected_req_resp.addExpectedDataType(CHIDataType:CBWrData_UD_PD);
+    tbe.expected_req_resp.addExpectedDataType(CHIDataType:CBWrData_SD_PD);
   } else {
     assert(tbe.reqType == CHIRequestType:WriteCleanFull);
     tbe.expected_req_resp.addExpectedDataType(CHIDataType:CBWrData_UD_PD);
