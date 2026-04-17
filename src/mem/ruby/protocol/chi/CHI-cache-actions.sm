@@ -4147,11 +4147,8 @@ action(Recentralize_AMO, desc="") {
   tbe.actions.pop();  // TagArrayWrite
 
   tbe.use_delegate := false;
-  tbe.dataToBeInvalid := false;
-  tbe.doCacheFill := true;
   clearExpectedSnpResp(tbe);
 
-  // Invalidate exclusive owner via SnpUnique (fetches data if HN has none)
   if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
     tbe.actions.push(Event:SendSnpUnique);
   } else if (tbe.dir_sharers.count() > 0) {
@@ -4163,9 +4160,18 @@ action(Recentralize_AMO, desc="") {
     tbe.actions.pushNB(Event:WriteFEPipe);
     tbe.actions.push(Event:SendCompData_AR);
     tbe.actions.push(Event:DelayAtomic);
-    tbe.actions.push(Event:CheckCacheFill);
-    tbe.actions.push(Event:WriteBEPipe);
-    tbe.actions.push(Event:TagArrayWrite);
+    if (tbe.doCacheFill) {
+      tbe.dataToBeInvalid := false;
+      tbe.actions.push(Event:CheckCacheFill);
+      tbe.actions.push(Event:WriteBEPipe);
+      tbe.actions.push(Event:TagArrayWrite);
+    } else {
+      tbe.actions.push(Event:SendWriteNoSnp);
+      tbe.actions.push(Event:WriteBEPipe);
+      tbe.actions.push(Event:SendWUData);
+      tbe.dataToBeInvalid := true;
+      tbe.actions.pushNB(Event:TagArrayWrite);
+    }
   } else {
     if (comp_anr) {
       tbe.actions.push(Event:SendDBIDResp_ANR);
@@ -4176,9 +4182,18 @@ action(Recentralize_AMO, desc="") {
       tbe.actions.pushNB(Event:WriteFEPipe);
     }
     tbe.actions.push(Event:DelayAtomic);
-    tbe.actions.push(Event:CheckCacheFill);
-    tbe.actions.push(Event:WriteBEPipe);
-    tbe.actions.push(Event:TagArrayWrite);
+    if (tbe.doCacheFill) {
+      tbe.dataToBeInvalid := false;
+      tbe.actions.push(Event:CheckCacheFill);
+      tbe.actions.push(Event:WriteBEPipe);
+      tbe.actions.push(Event:TagArrayWrite);
+    } else {
+      tbe.actions.push(Event:SendWriteNoSnp);
+      tbe.actions.push(Event:WriteBEPipe);
+      tbe.actions.push(Event:SendWUData);
+      tbe.dataToBeInvalid := true;
+      tbe.actions.pushNB(Event:TagArrayWrite);
+    }
   }
 }
 
