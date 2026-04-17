@@ -881,7 +881,8 @@ action(Initiate_Atomic_UD, desc="") {
 
 action(Initiate_AtomicReturn_I, desc="") {
   tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
-                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl;
+                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl
+                      && (tbe.dir_owner != tbe.requestor);
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
@@ -907,7 +908,8 @@ action(Initiate_AtomicReturn_I, desc="") {
 
 action(Initiate_AtomicNoReturn_I, desc="") {
   tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
-                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl;
+                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl
+                      && (tbe.dir_owner != tbe.requestor);
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
@@ -1129,7 +1131,8 @@ action(Initiate_WriteUnique_Forward, desc="") {
 
 action(Initiate_AtomicReturn_LocalWrite, desc="") {
   tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
-                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl;
+                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl
+                      && (tbe.dir_owner != tbe.requestor);
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
@@ -1152,7 +1155,8 @@ action(Initiate_AtomicReturn_LocalWrite, desc="") {
 
 action(Initiate_AtomicReturn_WriteBack, desc="") {
   tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
-                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl;
+                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl
+                      && (tbe.dir_owner != tbe.requestor);
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
@@ -1177,7 +1181,8 @@ action(Initiate_AtomicReturn_WriteBack, desc="") {
 
 action(Initiate_AtomicNoReturn_LocalWrite, desc="") {
   tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
-                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl;
+                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl
+                      && (tbe.dir_owner != tbe.requestor);
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
@@ -1206,7 +1211,8 @@ action(Initiate_AtomicNoReturn_LocalWrite, desc="") {
 
 action(Initiate_AtomicNoReturn_WriteBack, desc="") {
   tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
-                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl;
+                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl
+                      && (tbe.dir_owner != tbe.requestor);
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
