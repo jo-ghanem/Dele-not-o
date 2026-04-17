@@ -100,6 +100,7 @@ class PrivateL1PrivateL2CacheHierarchy(
         l2_assoc: int,
         hn_amo_policy: int = 0,
         atomic_op_latency: int = 4,
+        policy_type: int = 0,
     ):
         """
         :param l1i_size: The size of the L1 Instruction cache
@@ -110,6 +111,7 @@ class PrivateL1PrivateL2CacheHierarchy(
         :param l2_assoc: The associativity of the L2 cache
         :param hn_amo_policy: AMO policy (0=Central, 1=Pinned-Owner, 2=Unowned-Central)
         :param atomic_op_latency: Cycles for atomic ALU operation
+        :param policy_type: L1 atomic policy (0=near-AMO, 1/2=forward to HN)
         """
         AbstractRubyCacheHierarchy.__init__(self=self)
         AbstractTwoLevelCacheHierarchy.__init__(
@@ -123,6 +125,7 @@ class PrivateL1PrivateL2CacheHierarchy(
         )
         self._hn_amo_policy = hn_amo_policy
         self._atomic_op_latency = atomic_op_latency
+        self._policy_type = policy_type
 
     @overrides(AbstractCacheHierarchy)
     def get_coherence_protocol(self):
@@ -209,6 +212,7 @@ class PrivateL1PrivateL2CacheHierarchy(
             target_isa=board.get_processor().get_isa(),
             clk_domain=board.get_clock_domain(),
         )
+        cluster.dcache.policy_type = self._policy_type
         cluster.icache = L1CacheController(
             size=self._l1i_size,
             assoc=self._l1i_assoc,

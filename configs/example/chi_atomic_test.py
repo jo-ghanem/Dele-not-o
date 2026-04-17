@@ -72,6 +72,7 @@ cache_hierarchy = PrivateL1PrivateL2CacheHierarchy(
     l2_assoc=8,
     hn_amo_policy=args.hn_amo_policy,
     atomic_op_latency=4,
+    policy_type=1,
 )
 
 memory = SingleChannelDDR3_1600(size="32MiB")
