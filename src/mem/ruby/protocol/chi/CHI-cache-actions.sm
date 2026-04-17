@@ -887,6 +887,7 @@ action(Initiate_AtomicReturn_I, desc="") {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
     tbe.dataToBeInvalid := true;
+    tbe.dataValid := false;
     tbe.actions.pushNB(Event:TagArrayWrite);
   } else if (policy_type == 0){ // ALL NEAR
     tbe.actions.push(Event:SendReadUnique);
@@ -916,6 +917,7 @@ action(Initiate_AtomicNoReturn_I, desc="") {
     tbe.actions.push(Event:WaitSnpRespAMODone);
     tbe.actions.push(Event:Forward_Comp_ANR);
     tbe.dataToBeInvalid := true;
+    tbe.dataValid := false;
     tbe.actions.pushNB(Event:TagArrayWrite);
   } else if (policy_type == 0){ // ALL NEAR
     tbe.actions.push(Event:SendReadUnique);
@@ -1139,6 +1141,7 @@ action(Initiate_AtomicReturn_LocalWrite, desc="") {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
     tbe.dataToBeInvalid := true;
+    tbe.dataValid := false;
     tbe.actions.pushNB(Event:TagArrayWrite);
   } else {
     if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
@@ -1164,6 +1167,7 @@ action(Initiate_AtomicReturn_WriteBack, desc="") {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
     tbe.dataToBeInvalid := true;
+    tbe.dataValid := false;
     tbe.actions.pushNB(Event:TagArrayWrite);
   } else {
     if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
@@ -1192,6 +1196,7 @@ action(Initiate_AtomicNoReturn_LocalWrite, desc="") {
     tbe.actions.push(Event:WaitSnpRespAMODone);
     tbe.actions.push(Event:Forward_Comp_ANR);
     tbe.dataToBeInvalid := true;
+    tbe.dataValid := false;
     tbe.actions.pushNB(Event:TagArrayWrite);
   } else {
     if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
@@ -1223,6 +1228,7 @@ action(Initiate_AtomicNoReturn_WriteBack, desc="") {
     tbe.actions.push(Event:WaitSnpRespAMODone);
     tbe.actions.push(Event:Forward_Comp_ANR);
     tbe.dataToBeInvalid := true;
+    tbe.dataValid := false;
     tbe.actions.pushNB(Event:TagArrayWrite);
   } else {
     if ((tbe.dir_sharers.count() > 0) && tbe.dataMaybeDirtyUpstream) {
