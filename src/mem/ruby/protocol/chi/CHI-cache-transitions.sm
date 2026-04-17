@@ -1012,22 +1012,17 @@ transition({BUSY_BLKD,BUSY_INTR}, ActionStalledOnHazard) {
   StallActionOnHazard;
 }
 
-// Delegated AMO: owner-side accept SnpAMO only in states where
-// copyCacheAndDir loads data into the TBE (tbe.dataValid == true)
+// Delegated AMO: owner-side accept SnpAMO in all stable/compound states.
+// Matches SnpUnique accept set (line 898). Initiate_DelegatedAMOSnoop
+// sends SnpResp_Retry_AMO when tbe.dataValid==false (e.g. RU, RSD, RSC).
 
-transition({UD,SD,UC,SC,UD_RSC,SD_RSC,UC_RSC,SC_RSC,UD_RSD,SD_RSD},
+transition({UD,SD,UC,SC,UD_RSC,SD_RSC,UC_RSC,SC_RSC,UD_RSD,SD_RSD,
+            UC_RU,UD_RU,RU,RUSD,RUSC,RSD,RSC},
            SnpAMO, BUSY_BLKD) {
   Initiate_Snoop;
   Initiate_DelegatedAMOSnoop;
   Pop_SnoopRdyQueue;
   ProcessNextState;
-}
-
-// Stall SnpAMO in states where copyCacheAndDir does NOT load data into TBE.
-// Use StallSnoop_NoTBE: after Final restores a compound state (e.g. UC_RU),
-// the TBE may not exist yet (stalled request pending replay).
-transition({UC_RU,UD_RU,RU,RUSD,RUSC,RSD,RSC}, SnpAMO) {
-  StallSnoop_NoTBE;
 }
 
 transition(BUSY_INTR, SnpAMO, BUSY_BLKD) {
