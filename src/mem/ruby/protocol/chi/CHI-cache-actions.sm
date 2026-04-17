@@ -4034,7 +4034,7 @@ action(Initiate_DelegatedAMOSnoop, desc="") {
     tbe.actions.push(Event:SnpSharedPipe);
     tbe.actions.push(Event:SendDBIDResp_SnpAMO);
     if (tbe.dataToFwdRequestor) {
-      tbe.actions.pushNB(Event:SendCompData_SnpAMO);
+      tbe.actions.push(Event:SendCompData_SnpAMO);
     }
     tbe.actions.push(Event:DelayAtomic);
     tbe.actions.push(Event:Execute_DelegatedAMO);
