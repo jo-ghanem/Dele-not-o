@@ -4120,7 +4120,7 @@ action(Execute_DelegatedAMO, desc="") {
   tbe.dataBlk.atomicPartial(tbe.dataBlk, tbe.atomic_op);
   tbe.dataBlk.clearAtomicLogEntries();
   tbe.dataDirty := true;
-  DPRINTF(DelegateAMO, "C2:owner_atomic_partial addr=%#x after=%s\n", address, tbe.dataBlk);
+  DPRINTF(DelegateAMO, "C2:owner_atomic_partial_done addr=%#x after=%s\n", address, tbe.dataBlk);
 }
 
 // Stage 5: owner sends SnpResp_UD_AMODone to HN
