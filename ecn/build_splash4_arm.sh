@@ -4,23 +4,23 @@ set -euo pipefail
 
 SPLASH4_BASE="${1:-$HOME/ece666/benchmarks/Splash-4/Splash-4}"
 OUTDIR="${2:-$HOME/ece666/benchmarks/splash4_arm_bin}"
-CC="aarch64-linux-gnu-gcc"
 
-if ! command -v "$CC" &>/dev/null; then
-    # Try ECN paths
-    for p in /package/gcc/8.3.0/bin /usr/bin; do
-        if [ -x "$p/aarch64-linux-gnu-gcc" ]; then
-            CC="$p/aarch64-linux-gnu-gcc"
-            break
-        fi
-    done
-fi
+# Use ARM GNU Toolchain 13.3 installed in ~/bin_gem5/
+TOOLCHAIN_DIR="$HOME/bin_gem5/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu"
+CC="$TOOLCHAIN_DIR/bin/aarch64-none-linux-gnu-gcc"
+OBJDUMP="$TOOLCHAIN_DIR/bin/aarch64-none-linux-gnu-objdump"
 
-if ! command -v "$CC" &>/dev/null; then
-    echo "ERROR: aarch64-linux-gnu-gcc not found. Install with:"
-    echo "  sudo apt install gcc-aarch64-linux-gnu"
+if [ ! -x "$CC" ]; then
+    echo "ERROR: ARM cross-compiler not found at $CC"
+    echo "Install with:"
+    echo "  cd ~/bin_gem5 && curl -sL 'https://developer.arm.com/-/media/Files/downloads/gnu/13.3.rel1/binrel/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu.tar.xz' -o tc.tar.xz && tar xf tc.tar.xz"
     exit 1
 fi
+
+# Key: -march=armv8.1-a enables LSE atomics (CAS, LDADD, SWP, etc.)
+# This is required for delegate AMO testing — without it, GCC emits LL/SC
+# which does NOT generate AtomicReturn/AtomicNoReturn in CHI.
+ARCH_FLAGS="-march=armv8.1-a"
 
 mkdir -p "$OUTDIR"
 echo "=== Building SPLASH-4 for ARM aarch64 ==="
@@ -39,11 +39,14 @@ build_bench() {
     local extra_flags="${4:-}"
 
     echo -n "Building $name ... "
-    if $CC -O2 -static -pthread $extra_flags -o "$OUTDIR/$name" $srcs -lm 2>/tmp/build_${name}.log; then
-        echo "OK ($(file "$OUTDIR/$name" | grep -o 'ARM aarch64' || echo 'built'))"
+    if $CC -O2 -static -pthread $ARCH_FLAGS $extra_flags -o "$OUTDIR/$name" $srcs -lm 2>/tmp/build_${name}.log; then
+        # Count LSE atomics in the binary
+        local lse_count=$($OBJDUMP -d "$OUTDIR/$name" 2>/dev/null | grep -ciE '\bldadd\b|\bcas\b|\bswp\b|\bstadd\b|\bldset\b|\bldclr\b' || echo 0)
+        echo "OK (ARM aarch64, LSE atomics: $lse_count)"
         BUILT=$((BUILT+1))
     else
         echo "FAILED (see /tmp/build_${name}.log)"
+        cat /tmp/build_${name}.log
         FAILED=$((FAILED+1))
     fi
 }
