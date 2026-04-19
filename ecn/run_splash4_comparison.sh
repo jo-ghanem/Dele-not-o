@@ -155,16 +155,19 @@ extract_counters() {
         return
     fi
 
-    local a1=$(grep -c 'A1:' "$trace" 2>/dev/null || echo 0)
-    local a2=$(grep -c 'A2:' "$trace" 2>/dev/null || echo 0)
-    local a3=$(grep -c 'A3:' "$trace" 2>/dev/null || echo 0)
-    local b1=$(grep -c 'B1:' "$trace" 2>/dev/null || echo 0)
-    local b2=$(grep -c 'B2:' "$trace" 2>/dev/null || echo 0)
-    local b6=$(grep -c 'B6:' "$trace" 2>/dev/null || echo 0)
-    local c1=$(grep -c 'C1:' "$trace" 2>/dev/null || echo 0)
-    local c2=$(grep -c 'C2:' "$trace" 2>/dev/null || echo 0)
-    local e1=$(grep -c 'E1:' "$trace" 2>/dev/null || echo 0)
-    local accept=$(grep -c 'decision=accept' "$trace" 2>/dev/null || echo 0)
+    # grep -c outputs "0" AND exits 1 when no match; || echo 0 would
+    # append a second "0" producing "0\n0" which printf %d rejects.
+    # Use || true instead — grep -c always prints a count even for 0 matches.
+    local a1=$(grep -c 'A1:' "$trace" 2>/dev/null || true)
+    local a2=$(grep -c 'A2:' "$trace" 2>/dev/null || true)
+    local a3=$(grep -c 'A3:' "$trace" 2>/dev/null || true)
+    local b1=$(grep -c 'B1:' "$trace" 2>/dev/null || true)
+    local b2=$(grep -c 'B2:' "$trace" 2>/dev/null || true)
+    local b6=$(grep -c 'B6:' "$trace" 2>/dev/null || true)
+    local c1=$(grep -c 'C1:' "$trace" 2>/dev/null || true)
+    local c2=$(grep -c 'C2:' "$trace" 2>/dev/null || true)
+    local e1=$(grep -c 'E1:' "$trace" 2>/dev/null || true)
+    local accept=$(grep -c 'decision=accept' "$trace" 2>/dev/null || true)
 
     # Get tick from stats.txt
     local ticks=""
@@ -173,7 +176,8 @@ extract_counters() {
     fi
     # Fallback: parse gem5 stdout for exit tick
     if [ -z "$ticks" ]; then
-        ticks=$(grep 'Exiting @ tick' "$run_dir/gem5_stdout.txt" 2>/dev/null | tail -1 | grep -o '[0-9]*' || echo "?")
+        ticks=$(grep 'Exiting @ tick' "$run_dir/gem5_stdout.txt" 2>/dev/null | tail -1 | grep -o '[0-9]*' || true)
+        [ -z "$ticks" ] && ticks="?"
     fi
 
     printf "  [policy=%d] A1=%d A2=%d A3=%d | B1=%d B2=%d B6=%d | C1=%d C2=%d | E1=%d | ticks=%s\n" \
