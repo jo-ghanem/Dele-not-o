@@ -78,11 +78,18 @@ echo ""
 BENCHMARKS=(
     "fft:fft:-p 2 -m 16"
     "radix:radix:-p 2 -n 1024 -r 512"
-    "barnes:barnes:"
-    "water_nsq:water_nsq:"
-    "water_sp:water_sp:"
     "ocean_cp:ocean_cp:-p 2 -n 66"
 )
+
+# --- Step 2a: Build + add AMO micro-benchmark ---
+AMO_SRC="$REPO_ROOT/ecn/test-bins/amo_delegate_test.c"
+AMO_BIN="$SPLASH4_BIN/amo_test"
+if [ -f "$AMO_SRC" ]; then
+    TOOLCHAIN_DIR2="$HOME/bin_gem5/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu"
+    "$TOOLCHAIN_DIR2/bin/aarch64-none-linux-gnu-gcc" -O2 -static -march=armv8.1-a -pthread \
+        -o "$AMO_BIN" "$AMO_SRC" -lm 2>/dev/null && echo "Built AMO micro-benchmark"
+    BENCHMARKS=("amo_test:amo_test:-t 2 -n 100" "${BENCHMARKS[@]}")
+fi
 
 CORES=2
 RESULTS_FILE="$OUTDIR/comparison_results.txt"
@@ -109,20 +116,20 @@ run_benchmark() {
 
     echo -n "  Running $name (policy=$policy) ... "
 
-    local gem5_args=""
-    gem5_args="$gem5_args --debug-flags=DelegateAMO"
-    gem5_args="$gem5_args --debug-file=delegate_trace.txt"
-    gem5_args="$gem5_args --outdir=$run_dir"
+    # Build command as array to preserve quoting
+    local -a cmd=(timeout 600 "$GEM5"
+        --debug-flags=DelegateAMO
+        --debug-file=delegate_trace.txt
+        "--outdir=$run_dir"
+        "$CONFIG"
+        --binary "$bin_path"
+        --num-cores "$CORES"
+        --hn-amo-policy "$policy"
+        --cpu-type timing
+    )
+    [ -n "$bench_args" ] && cmd+=(--args "$bench_args")
 
-    local config_args=""
-    config_args="$config_args --binary $bin_path"
-    config_args="$config_args --num-cores $CORES"
-    config_args="$config_args --hn-amo-policy $policy"
-    config_args="$config_args --cpu-type timing"
-    [ -n "$bench_args" ] && config_args="$config_args --args \"$bench_args\""
-
-    if timeout 600 $GEM5 $gem5_args $CONFIG $config_args \
-        > "$run_dir/gem5_stdout.txt" 2>&1; then
+    if "${cmd[@]}" > "$run_dir/gem5_stdout.txt" 2>&1; then
         echo "DONE"
         return 0
     else
