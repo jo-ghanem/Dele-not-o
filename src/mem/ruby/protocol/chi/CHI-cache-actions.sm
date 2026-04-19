@@ -4061,11 +4061,32 @@ action(Send_SnpAMO, desc="") {
 
 // Owner-side: initialize delegated AMO snoop action queue
 action(Initiate_DelegatedAMOSnoop, desc="") {
-  if (tbe.dataValid == false || tbe.dir_sharers.count() > 0) {
+  if (tbe.dir_sharers.count() > 0) {
+    // Data may be in upstream L1 — back-invalidate to get exclusive
+    // access + fresh data, then proceed with AMO locally.
+    // Pattern follows Initiate_InvalidationSnoop (SnpUnique handling).
+    DPRINTF(DelegateAMO, "B2:recv_snp_amo addr=%#x decision=accept_backinv dataValid=%d sharers=%d\n",
+            address, tbe.dataValid, tbe.dir_sharers.count());
+    tbe.actions.push(Event:SnpSharedPipe);
+    if (tbe.dataValid == false) {
+      tbe.actions.push(Event:SendSnpUniqueRetToSrc);
+    } else {
+      tbe.actions.push(Event:SendSnpUnique);
+    }
+    tbe.actions.push(Event:SendDBIDResp_SnpAMO);
+    if (tbe.dataToFwdRequestor) {
+      tbe.actions.push(Event:SendCompData_SnpAMO);
+    }
+    tbe.actions.push(Event:DelayAtomic);
+    tbe.actions.push(Event:Execute_DelegatedAMO);
+    tbe.actions.push(Event:SendSnpRespAMODone);
+  } else if (tbe.dataValid == false) {
+    // No sharers and no data — cannot execute locally, retry
     DPRINTF(DelegateAMO, "B2:recv_snp_amo addr=%#x decision=retry dataValid=%d sharers=%d\n",
             address, tbe.dataValid, tbe.dir_sharers.count());
     tbe.actions.push(Event:SendSnpRespRetryAMO);
   } else {
+    // Data valid, no sharers — execute AMO directly
     DPRINTF(DelegateAMO, "B2:recv_snp_amo addr=%#x decision=accept\n", address);
     tbe.actions.push(Event:SnpSharedPipe);
     tbe.actions.push(Event:SendDBIDResp_SnpAMO);
