@@ -880,74 +880,104 @@ action(Initiate_Atomic_UD, desc="") {
 }
 
 action(Initiate_AtomicReturn_I, desc="") {
-  tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
-                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl
-                      && (tbe.dir_owner != tbe.requestor);
+  tbe.use_delegate := is_HN && (hn_amo_policy >= 1) &&
+                      (hn_amo_policy != 3) &&
+                      tbe.dir_ownerExists && tbe.dir_ownerIsExcl &&
+                      (tbe.dir_owner != tbe.requestor);
+
+  tbe.use_migrate := is_HN && (hn_amo_policy == 3);
+
   if (tbe.use_delegate) {
-    tbe.actions.push(Event:SendSnpAMO);
-    tbe.actions.push(Event:WaitSnpRespAMODone);
-    tbe.dataToBeInvalid := true;
-    tbe.dataValid := false;
-    tbe.actions.pushNB(Event:TagArrayWrite);
-  } else if (policy_type == 0){ // ALL NEAR
-    tbe.actions.push(Event:SendReadUnique);
-    tbe.actions.push(Event:WriteFEPipe);
-    tbe.actions.push(Event:CheckCacheFill);
-    tbe.actions.push(Event:WriteBEPipe);
-    tbe.actions.push(Event:TagArrayWrite);
-    tbe.atomic_to_be_done := true;
-  } else if ((policy_type == 1) || // UNIQUE NEAR
-             (policy_type == 2)) { // PRESENT NEAR
-    tbe.actions.push(Event:SendAtomicReturn);
-    tbe.actions.push(Event:SendARData);
-    tbe.dataToBeInvalid := true;
-    tbe.doCacheFill := false;
-    tbe.atomic_to_be_done := false;
+      tbe.actions.push(Event:SendSnpAMO);
+      tbe.actions.push(Event:WaitSnpRespAMODone);
+      tbe.dataToBeInvalid := true;
+      tbe.dataValid := false;
+      tbe.actions.pushNB(Event:TagArrayWrite);
+  } else if (tbe.use_migrate) {
+      // Migrate: same flow as near AMO, but triggered from AtomicReturn
+      tbe.actions.push(Event:SendReadUnique);
+      tbe.actions.push(Event:WriteFEPipe);
+      tbe.actions.push(Event:CheckCacheFill);
+      tbe.actions.push(Event:WriteBEPipe);
+      tbe.actions.push(Event:TagArrayWrite);
+      tbe.atomic_to_be_done := true;
+  } else if (policy_type == 0) { // ALL NEAR
+      tbe.actions.push(Event:SendReadUnique);
+      tbe.actions.push(Event:WriteFEPipe);
+      tbe.actions.push(Event:CheckCacheFill);
+      tbe.actions.push(Event:WriteBEPipe);
+      tbe.actions.push(Event:TagArrayWrite);
+      tbe.atomic_to_be_done := true;
+  } else if ((policy_type == 1) || (policy_type == 2)) { // UNIQUE/PRESENT NEAR
+      tbe.actions.push(Event:SendAtomicReturn);
+      tbe.actions.push(Event:SendARData);
+      tbe.dataToBeInvalid := true;
+      tbe.doCacheFill := false;
+      tbe.atomic_to_be_done := false;
   } else {
-    error("Invalid policy type");
+      error("Invalid policy type");
   }
 }
 
 action(Initiate_AtomicNoReturn_I, desc="") {
-  tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
-                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl
-                      && (tbe.dir_owner != tbe.requestor);
+  tbe.use_delegate := is_HN && (hn_amo_policy >= 1) &&
+                      (hn_amo_policy != 3) &&
+                      tbe.dir_ownerExists && tbe.dir_ownerIsExcl &&
+                      (tbe.dir_owner != tbe.requestor);
+
+  tbe.use_migrate := is_HN && (hn_amo_policy == 3);
+
   if (tbe.use_delegate) {
-    tbe.actions.push(Event:SendSnpAMO);
-    tbe.actions.push(Event:WaitSnpRespAMODone);
-    tbe.actions.push(Event:Forward_Comp_ANR);
-    tbe.dataToBeInvalid := true;
-    tbe.dataValid := false;
-    tbe.actions.pushNB(Event:TagArrayWrite);
-  } else if (policy_type == 0){ // ALL NEAR
-    tbe.actions.push(Event:SendReadUnique);
-    tbe.actions.push(Event:WriteFEPipe);
-    tbe.actions.push(Event:CheckCacheFill);
-    tbe.actions.push(Event:WriteBEPipe);
-    tbe.actions.push(Event:TagArrayWrite);
-    tbe.atomic_to_be_done := true;
-  } else if ((policy_type == 1) || // UNIQUE NEAR
-             (policy_type == 2)) { // PRESENT NEAR
-    tbe.actions.push(Event:SendAtomicNoReturn);
-    tbe.actions.push(Event:SendANRData);
-    tbe.dataToBeInvalid := true;
-    tbe.doCacheFill := false;
-    tbe.atomic_to_be_done := false;
+      tbe.actions.push(Event:SendSnpAMO);
+      tbe.actions.push(Event:WaitSnpRespAMODone);
+      tbe.actions.push(Event:Forward_Comp_ANR);
+      tbe.dataToBeInvalid := true;
+      tbe.dataValid := false;
+      tbe.actions.pushNB(Event:TagArrayWrite);
+  } else if (tbe.use_migrate) {
+      // Migrate: same flow as near AMO, but triggered from AtomicNoReturn
+      tbe.actions.push(Event:SendReadUnique);
+      tbe.actions.push(Event:WriteFEPipe);
+      tbe.actions.push(Event:CheckCacheFill);
+      tbe.actions.push(Event:WriteBEPipe);
+      tbe.actions.push(Event:TagArrayWrite);
+      tbe.atomic_to_be_done := true;
+  } else if (policy_type == 0) { // ALL NEAR
+      tbe.actions.push(Event:SendReadUnique);
+      tbe.actions.push(Event:WriteFEPipe);
+      tbe.actions.push(Event:CheckCacheFill);
+      tbe.actions.push(Event:WriteBEPipe);
+      tbe.actions.push(Event:TagArrayWrite);
+      tbe.atomic_to_be_done := true;
+  } else if ((policy_type == 1) || (policy_type == 2)) { // UNIQUE/PRESENT NEAR
+      tbe.actions.push(Event:SendAtomicNoReturn);
+      tbe.actions.push(Event:SendANRData);
+      tbe.dataToBeInvalid := true;
+      tbe.doCacheFill := false;
+      tbe.atomic_to_be_done := false;
   } else {
-    error("Invalid policy type");
+      error("Invalid policy type");
   }
 }
 
 action(Initiate_AtomicReturn_SD, desc="") {
-  if ((policy_type == 0) || // ALL NEAR
-      (policy_type == 2)) { // PRESENT NEAR
+  tbe.use_migrate := is_HN && (hn_amo_policy == 3);
+
+  if (tbe.use_migrate) {
     tbe.actions.push(Event:SendReadUnique);
     tbe.actions.push(Event:WriteFEPipe);
     tbe.actions.push(Event:CheckCacheFill);
     tbe.actions.push(Event:WriteBEPipe);
     tbe.actions.push(Event:TagArrayWrite);
     tbe.atomic_to_be_done := true;
-  } else if (policy_type == 1) { // UNIQUE NEAR
+  } else if ((policy_type == 0) || (policy_type == 2)) {
+    tbe.actions.push(Event:SendReadUnique);
+    tbe.actions.push(Event:WriteFEPipe);
+    tbe.actions.push(Event:CheckCacheFill);
+    tbe.actions.push(Event:WriteBEPipe);
+    tbe.actions.push(Event:TagArrayWrite);
+    tbe.atomic_to_be_done := true;
+  } else if (policy_type == 1) {
     tbe.actions.push(Event:SendAtomicReturn);
     tbe.actions.push(Event:SendARData);
     tbe.dataToBeInvalid := true;
@@ -959,15 +989,23 @@ action(Initiate_AtomicReturn_SD, desc="") {
 }
 
 action(Initiate_AtomicNoReturn_SD, desc="") {
-  if ((policy_type == 0) || // ALL NEAR
-      (policy_type == 2)) { // PRESENT NEAR
+  tbe.use_migrate := is_HN && (hn_amo_policy == 3);
+
+  if (tbe.use_migrate) {
     tbe.actions.push(Event:SendReadUnique);
     tbe.actions.push(Event:WriteFEPipe);
     tbe.actions.push(Event:CheckCacheFill);
     tbe.actions.push(Event:WriteBEPipe);
     tbe.actions.push(Event:TagArrayWrite);
     tbe.atomic_to_be_done := true;
-  } else if (policy_type == 1) { // UNIQUE NEAR
+  } else if ((policy_type == 0) || (policy_type == 2)) {
+    tbe.actions.push(Event:SendReadUnique);
+    tbe.actions.push(Event:WriteFEPipe);
+    tbe.actions.push(Event:CheckCacheFill);
+    tbe.actions.push(Event:WriteBEPipe);
+    tbe.actions.push(Event:TagArrayWrite);
+    tbe.atomic_to_be_done := true;
+  } else if (policy_type == 1) {
     tbe.actions.push(Event:SendAtomicNoReturn);
     tbe.actions.push(Event:SendANRData);
     tbe.dataToBeInvalid := true;
@@ -979,15 +1017,23 @@ action(Initiate_AtomicNoReturn_SD, desc="") {
 }
 
 action(Initiate_AtomicReturn_SC, desc="") {
-  if ((policy_type == 0) || // ALL NEAR
-      (policy_type == 2)) { // PRESENT NEAR
+  tbe.use_migrate := is_HN && (hn_amo_policy == 3);
+
+  if (tbe.use_migrate) {
     tbe.actions.push(Event:SendReadUnique);
     tbe.actions.push(Event:WriteFEPipe);
     tbe.actions.push(Event:CheckCacheFill);
     tbe.actions.push(Event:WriteBEPipe);
     tbe.actions.push(Event:TagArrayWrite);
     tbe.atomic_to_be_done := true;
-  } else if (policy_type == 1) { // UNIQUE NEAR
+  } else if ((policy_type == 0) || (policy_type == 2)) {
+    tbe.actions.push(Event:SendReadUnique);
+    tbe.actions.push(Event:WriteFEPipe);
+    tbe.actions.push(Event:CheckCacheFill);
+    tbe.actions.push(Event:WriteBEPipe);
+    tbe.actions.push(Event:TagArrayWrite);
+    tbe.atomic_to_be_done := true;
+  } else if (policy_type == 1) {
     tbe.actions.push(Event:SendAtomicReturn);
     tbe.actions.push(Event:SendARData);
     tbe.dataToBeInvalid := true;
@@ -999,15 +1045,23 @@ action(Initiate_AtomicReturn_SC, desc="") {
 }
 
 action(Initiate_AtomicNoReturn_SC, desc="") {
-  if ((policy_type == 0) || // ALL NEAR
-      (policy_type == 2)) { // PRESENT NEAR
+  tbe.use_migrate := is_HN && (hn_amo_policy == 3);
+
+  if (tbe.use_migrate) {
     tbe.actions.push(Event:SendReadUnique);
     tbe.actions.push(Event:WriteFEPipe);
     tbe.actions.push(Event:CheckCacheFill);
     tbe.actions.push(Event:WriteBEPipe);
     tbe.actions.push(Event:TagArrayWrite);
     tbe.atomic_to_be_done := true;
-  } else if (policy_type == 1) { // UNIQUE NEAR
+  } else if ((policy_type == 0) || (policy_type == 2)) {
+    tbe.actions.push(Event:SendReadUnique);
+    tbe.actions.push(Event:WriteFEPipe);
+    tbe.actions.push(Event:CheckCacheFill);
+    tbe.actions.push(Event:WriteBEPipe);
+    tbe.actions.push(Event:TagArrayWrite);
+    tbe.atomic_to_be_done := true;
+  } else if (policy_type == 1) {
     tbe.actions.push(Event:SendAtomicNoReturn);
     tbe.actions.push(Event:SendANRData);
     tbe.dataToBeInvalid := true;
@@ -1134,9 +1188,11 @@ action(Initiate_WriteUnique_Forward, desc="") {
 }
 
 action(Initiate_AtomicReturn_LocalWrite, desc="") {
-  tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
-                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl
-                      && (tbe.dir_owner != tbe.requestor);
+  tbe.use_delegate := is_HN && (hn_amo_policy >= 1) &&
+                      (hn_amo_policy != 3) &&
+                      tbe.dir_ownerExists && tbe.dir_ownerIsExcl &&
+                      (tbe.dir_owner != tbe.requestor);
+
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
@@ -1160,9 +1216,11 @@ action(Initiate_AtomicReturn_LocalWrite, desc="") {
 }
 
 action(Initiate_AtomicReturn_WriteBack, desc="") {
-  tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
-                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl
-                      && (tbe.dir_owner != tbe.requestor);
+  tbe.use_delegate := is_HN && (hn_amo_policy >= 1) &&
+                      (hn_amo_policy != 3) &&
+                      tbe.dir_ownerExists && tbe.dir_ownerIsExcl &&
+                      (tbe.dir_owner != tbe.requestor);
+
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
@@ -1188,9 +1246,11 @@ action(Initiate_AtomicReturn_WriteBack, desc="") {
 }
 
 action(Initiate_AtomicNoReturn_LocalWrite, desc="") {
-  tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
-                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl
-                      && (tbe.dir_owner != tbe.requestor);
+  tbe.use_delegate := is_HN && (hn_amo_policy >= 1) &&
+                      (hn_amo_policy != 3) &&
+                      tbe.dir_ownerExists && tbe.dir_ownerIsExcl &&
+                      (tbe.dir_owner != tbe.requestor);
+
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
@@ -1220,9 +1280,11 @@ action(Initiate_AtomicNoReturn_LocalWrite, desc="") {
 }
 
 action(Initiate_AtomicNoReturn_WriteBack, desc="") {
-  tbe.use_delegate := is_HN && (hn_amo_policy >= 1)
-                      && tbe.dir_ownerExists && tbe.dir_ownerIsExcl
-                      && (tbe.dir_owner != tbe.requestor);
+  tbe.use_delegate := is_HN && (hn_amo_policy >= 1) &&
+                      (hn_amo_policy != 3) &&
+                      tbe.dir_ownerExists && tbe.dir_ownerIsExcl &&
+                      (tbe.dir_owner != tbe.requestor);
+
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);

@@ -137,7 +137,11 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // Present Near execites all Atomics at L1 except when state is I (set to 2)
   int policy_type := 0;
 
-  // Delegated AMO policy (0=All-Central, 1=Pinned-Owner, 2=Unowned-Central)
+  // HN AMO policy
+  // 0 = All-Central
+  // 1 = Pinned-Owner
+  // 2 = Unowned-Central
+  // 3 = All-Migrate
   int hn_amo_policy := 0;
 
   // Use separate Comp/DBIDResp responses for WriteUnique
@@ -678,6 +682,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool use_DMT,           desc="Use DMT for this transaction";
     bool use_DCT,           desc="Use DCT for this transaction";
     bool use_delegate,      desc="Use delegated AMO for this transaction";
+    bool use_migrate,       desc="Use migrating AMO for this transaction";
     bool dataToFwdRequestor, desc="Data should be forwarded to fwdRequestor";
     MachineID amo_operand_dest, desc="Destination for AMO operand NCBWrData";
 
