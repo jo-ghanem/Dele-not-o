@@ -104,6 +104,8 @@ class PrivateL1PrivateL2CacheHierarchy(
         dynamo_enabled: bool = False,
         dynamo_threshold: int = 1,
         dynamo_variant: int = 0,
+        delegato_enabled: bool = False,
+        delegato_variant: int = 0,
     ):
         """
         :param l1i_size: The size of the L1 Instruction cache
@@ -135,6 +137,8 @@ class PrivateL1PrivateL2CacheHierarchy(
         self._dynamo_enabled = dynamo_enabled
         self._dynamo_threshold = dynamo_threshold
         self._dynamo_variant = dynamo_variant
+        self._delegato_enabled = delegato_enabled
+        self._delegato_variant = delegato_variant
 
     @overrides(AbstractCacheHierarchy)
     def get_coherence_protocol(self):
@@ -160,6 +164,8 @@ class PrivateL1PrivateL2CacheHierarchy(
             clk_domain=board.get_clock_domain(),
             addr_ranges=[AllMemory],
             hn_amo_policy=self._hn_amo_policy,
+            delegato_enabled=self._delegato_enabled,
+            delegato_variant=self._delegato_variant,
         )
         self.directory.ruby_system = self.ruby_system
 
@@ -226,6 +232,8 @@ class PrivateL1PrivateL2CacheHierarchy(
         cluster.dcache.dynamo_enabled = self._dynamo_enabled
         cluster.dcache.dynamo_threshold = self._dynamo_threshold
         cluster.dcache.dynamo_variant = self._dynamo_variant
+        cluster.dcache.delegato_enabled = self._delegato_enabled
+        cluster.dcache.delegato_variant = self._delegato_variant
         cluster.icache = L1CacheController(
             size=self._l1i_size,
             assoc=self._l1i_assoc,

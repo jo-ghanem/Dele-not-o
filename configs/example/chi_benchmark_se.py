@@ -61,6 +61,10 @@ parser.add_argument("--dynamo-threshold", type=int, default=1,
     help="DynAMO confidence threshold (near iff conf > threshold)")
 parser.add_argument("--dynamo-variant", type=int, default=0,
     help="0=Reuse-PN (default), 1=Reuse-UN, 2=metric")
+parser.add_argument("--delegato-enabled", action="store_true",
+    help="Enable Delegato HN-side predictor (chiplet.pdf §5.3)")
+parser.add_argument("--delegato-variant", type=int, default=0,
+    help="0=FSM, 1=AlwaysDelegate, 2=AlwaysMigrate, 3=AlwaysCentralize")
 args = parser.parse_args()
 
 cpu_type_map = {
@@ -82,6 +86,8 @@ cache_hierarchy = PrivateL1PrivateL2CacheHierarchy(
     dynamo_enabled=args.dynamo_enabled,
     dynamo_threshold=args.dynamo_threshold,
     dynamo_variant=args.dynamo_variant,
+    delegato_enabled=args.delegato_enabled,
+    delegato_variant=args.delegato_variant,
 )
 
 memory = SingleChannelDDR3_1600(size=args.mem_size)

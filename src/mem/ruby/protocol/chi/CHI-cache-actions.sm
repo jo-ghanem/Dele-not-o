@@ -1425,6 +1425,25 @@ action(Initiate_AtomicReturn_LocalWrite, desc="") {
                       tbe.dir_ownerExists && tbe.dir_ownerIsExcl &&
                       (tbe.dir_owner != tbe.requestor);
 
+  // Delegato: override use_delegate based on Predictor Table decision
+  // at HN (plan §6.3 G5). hn_amo_policy==4 activates Delegato. The
+  // decision codes are: 0=Centralize (clear use_delegate), 1=Delegate
+  // (keep use_delegate if owner exists), 2=Migrate (first-cut: same
+  // path as Delegate since gem5 CHI has no separate HN-migrate
+  // transaction — documented simplification in delegato_fsm.md).
+  if (is_HN && hn_amo_policy == 4 && delegato_enabled) {
+    int delegato_dec := delegato_predictor.decide(address, tbe.requestor, false);
+    DPRINTF(Delegato, "G5:decide addr=%#x req=%s dec=%d owner_ok=%d\n",
+            address, tbe.requestor, delegato_dec,
+            tbe.dir_ownerExists && tbe.dir_ownerIsExcl && (tbe.dir_owner != tbe.requestor));
+    if (delegato_dec == 0) {
+      tbe.use_delegate := false;  // Centralize
+    } else {
+      tbe.use_delegate := tbe.dir_ownerExists && tbe.dir_ownerIsExcl &&
+                          (tbe.dir_owner != tbe.requestor);
+    }
+  }
+
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
     tbe.actions.push(Event:WaitSnpRespAMODone);
@@ -1452,6 +1471,25 @@ action(Initiate_AtomicReturn_WriteBack, desc="") {
                       (hn_amo_policy != 3) &&
                       tbe.dir_ownerExists && tbe.dir_ownerIsExcl &&
                       (tbe.dir_owner != tbe.requestor);
+
+  // Delegato: override use_delegate based on Predictor Table decision
+  // at HN (plan §6.3 G5). hn_amo_policy==4 activates Delegato. The
+  // decision codes are: 0=Centralize (clear use_delegate), 1=Delegate
+  // (keep use_delegate if owner exists), 2=Migrate (first-cut: same
+  // path as Delegate since gem5 CHI has no separate HN-migrate
+  // transaction — documented simplification in delegato_fsm.md).
+  if (is_HN && hn_amo_policy == 4 && delegato_enabled) {
+    int delegato_dec := delegato_predictor.decide(address, tbe.requestor, false);
+    DPRINTF(Delegato, "G5:decide addr=%#x req=%s dec=%d owner_ok=%d\n",
+            address, tbe.requestor, delegato_dec,
+            tbe.dir_ownerExists && tbe.dir_ownerIsExcl && (tbe.dir_owner != tbe.requestor));
+    if (delegato_dec == 0) {
+      tbe.use_delegate := false;  // Centralize
+    } else {
+      tbe.use_delegate := tbe.dir_ownerExists && tbe.dir_ownerIsExcl &&
+                          (tbe.dir_owner != tbe.requestor);
+    }
+  }
 
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
@@ -1482,6 +1520,25 @@ action(Initiate_AtomicNoReturn_LocalWrite, desc="") {
                       (hn_amo_policy != 3) &&
                       tbe.dir_ownerExists && tbe.dir_ownerIsExcl &&
                       (tbe.dir_owner != tbe.requestor);
+
+  // Delegato: override use_delegate based on Predictor Table decision
+  // at HN (plan §6.3 G5). hn_amo_policy==4 activates Delegato. The
+  // decision codes are: 0=Centralize (clear use_delegate), 1=Delegate
+  // (keep use_delegate if owner exists), 2=Migrate (first-cut: same
+  // path as Delegate since gem5 CHI has no separate HN-migrate
+  // transaction — documented simplification in delegato_fsm.md).
+  if (is_HN && hn_amo_policy == 4 && delegato_enabled) {
+    int delegato_dec := delegato_predictor.decide(address, tbe.requestor, false);
+    DPRINTF(Delegato, "G5:decide addr=%#x req=%s dec=%d owner_ok=%d\n",
+            address, tbe.requestor, delegato_dec,
+            tbe.dir_ownerExists && tbe.dir_ownerIsExcl && (tbe.dir_owner != tbe.requestor));
+    if (delegato_dec == 0) {
+      tbe.use_delegate := false;  // Centralize
+    } else {
+      tbe.use_delegate := tbe.dir_ownerExists && tbe.dir_ownerIsExcl &&
+                          (tbe.dir_owner != tbe.requestor);
+    }
+  }
 
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
@@ -1516,6 +1573,25 @@ action(Initiate_AtomicNoReturn_WriteBack, desc="") {
                       (hn_amo_policy != 3) &&
                       tbe.dir_ownerExists && tbe.dir_ownerIsExcl &&
                       (tbe.dir_owner != tbe.requestor);
+
+  // Delegato: override use_delegate based on Predictor Table decision
+  // at HN (plan §6.3 G5). hn_amo_policy==4 activates Delegato. The
+  // decision codes are: 0=Centralize (clear use_delegate), 1=Delegate
+  // (keep use_delegate if owner exists), 2=Migrate (first-cut: same
+  // path as Delegate since gem5 CHI has no separate HN-migrate
+  // transaction — documented simplification in delegato_fsm.md).
+  if (is_HN && hn_amo_policy == 4 && delegato_enabled) {
+    int delegato_dec := delegato_predictor.decide(address, tbe.requestor, false);
+    DPRINTF(Delegato, "G5:decide addr=%#x req=%s dec=%d owner_ok=%d\n",
+            address, tbe.requestor, delegato_dec,
+            tbe.dir_ownerExists && tbe.dir_ownerIsExcl && (tbe.dir_owner != tbe.requestor));
+    if (delegato_dec == 0) {
+      tbe.use_delegate := false;  // Centralize
+    } else {
+      tbe.use_delegate := tbe.dir_ownerExists && tbe.dir_ownerIsExcl &&
+                          (tbe.dir_owner != tbe.requestor);
+    }
+  }
 
   if (tbe.use_delegate) {
     tbe.actions.push(Event:SendSnpAMO);
