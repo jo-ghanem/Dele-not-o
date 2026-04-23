@@ -144,6 +144,16 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // 3 = All-Migrate
   int hn_amo_policy := 0;
 
+  // DynAMO-Reuse predictor (dynamo.pdf §5, per-L1).
+  // When enabled, the 6 L1-side Initiate_Atomic*_{I,SD,SC} actions consult
+  // the AMT to decide near vs far per AMO. See plan §5 for full design.
+  bool dynamo_enabled := "False";
+  int dynamo_entries := 128;      // paper baseline (dynamo.pdf Table 2)
+  int dynamo_assoc := 4;          // paper baseline
+  int dynamo_threshold := 1;      // predict near iff confidence > threshold
+  int dynamo_threshold_max := 7;  // saturation cap (5-bit per paper §5.3)
+  int dynamo_variant := 0;        // 0=Reuse-PN default, 1=Reuse-UN, 2=metric
+
   // Use separate Comp/DBIDResp responses for WriteUnique
   bool comp_wu := "False";
   // additional latency for the WU Comp response
@@ -615,6 +625,21 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     State state,       desc="SLICC line state";
   }
 
+  // DynAMO-Reuse AMT (dynamo.pdf §5, plan §5). Per-L1 set-associative
+  // table; per-entry reuse_bit + saturating confidence; global g_* counters
+  // fed by note_amo_fetch/update_confidence. Implementation in
+  // src/mem/ruby/structures/DynAMOTable.{cc,hh}.
+  structure(DynAMOTable, external = "yes") {
+    bool has(Addr);
+    void allocate(Addr);
+    void mark_reused(Addr);
+    void update_confidence(Addr);
+    void evict(Addr);
+    bool predict_near(Addr);
+    bool first_decision_near();
+    void note_amo_fetch();
+  }
+
   // Helper class for tracking expected response and data messages
   structure(ExpectedMap, external ="yes") {
     void clear(int dataChunks);
@@ -832,6 +857,10 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   int sc_lock_multiplier, default="0";
 
   // Definitions of the TBE tables
+
+  // DynAMO-Reuse predictor AMT. Instantiated on every controller; only
+  // consumed at L1 when dynamo_enabled == true. Sized per Python params.
+  DynAMOTable dynamo_table, constructor="m_dynamo_entries, m_dynamo_assoc, m_dynamo_threshold, m_dynamo_threshold_max";
 
   // Main TBE table used for incoming requests
   TBETable TBEs,      template="<Cache_TBE>", constructor="m_number_of_TBEs";
