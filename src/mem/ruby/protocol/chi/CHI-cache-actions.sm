@@ -897,6 +897,26 @@ action(Initiate_AtomicReturn_I, desc="") {
             address, tbe.requestor);
   }
 
+  // DynAMO-Reuse decision (dynamo.pdf §5.3, plan §5 N3). Runs at L1
+  // (these actions only fire at L1 per the transition table). On AMT
+  // miss the first decision uses the global reuse ratio; the entry is
+  // always allocated with conf=MAX so the next decision is informed.
+  // I-state: both PN and UN variants go far when predicted far.
+  bool dynamo_want_near := false;
+  if (dynamo_enabled) {
+    if (dynamo_table.has(address)) {
+      dynamo_want_near := dynamo_table.predict_near(address);
+    } else {
+      dynamo_want_near := dynamo_table.first_decision_near();
+      dynamo_table.allocate(address);
+    }
+    if (dynamo_want_near) {
+      DPRINTF(DynAMO, "N1:dynamo_near addr=%#x has=1\n", address);
+    } else {
+      DPRINTF(DynAMO, "N2:dynamo_far addr=%#x\n", address);
+    }
+  }
+
   if (tbe.use_delegate) {
       tbe.actions.push(Event:SendSnpAMO);
       tbe.actions.push(Event:WaitSnpRespAMODone);
@@ -905,6 +925,13 @@ action(Initiate_AtomicReturn_I, desc="") {
       tbe.actions.pushNB(Event:TagArrayWrite);
   } else if (tbe.use_migrate) {
       // Migrate: same flow as near AMO, but triggered from AtomicReturn
+      tbe.actions.push(Event:SendReadUnique);
+      tbe.actions.push(Event:WriteFEPipe);
+      tbe.actions.push(Event:CheckCacheFill);
+      tbe.actions.push(Event:WriteBEPipe);
+      tbe.actions.push(Event:TagArrayWrite);
+      tbe.atomic_to_be_done := true;
+  } else if (dynamo_enabled && dynamo_want_near) { // DynAMO predicts near
       tbe.actions.push(Event:SendReadUnique);
       tbe.actions.push(Event:WriteFEPipe);
       tbe.actions.push(Event:CheckCacheFill);
@@ -947,6 +974,22 @@ action(Initiate_AtomicNoReturn_I, desc="") {
             address, tbe.requestor);
   }
 
+  // DynAMO-Reuse decision (dynamo.pdf §5.3, plan §5 N3). I-state variant.
+  bool dynamo_want_near := false;
+  if (dynamo_enabled) {
+    if (dynamo_table.has(address)) {
+      dynamo_want_near := dynamo_table.predict_near(address);
+    } else {
+      dynamo_want_near := dynamo_table.first_decision_near();
+      dynamo_table.allocate(address);
+    }
+    if (dynamo_want_near) {
+      DPRINTF(DynAMO, "N1:dynamo_near addr=%#x has=1\n", address);
+    } else {
+      DPRINTF(DynAMO, "N2:dynamo_far addr=%#x\n", address);
+    }
+  }
+
   if (tbe.use_delegate) {
       tbe.actions.push(Event:SendSnpAMO);
       tbe.actions.push(Event:WaitSnpRespAMODone);
@@ -956,6 +999,13 @@ action(Initiate_AtomicNoReturn_I, desc="") {
       tbe.actions.pushNB(Event:TagArrayWrite);
   } else if (tbe.use_migrate) {
       // Migrate: same flow as near AMO, but triggered from AtomicNoReturn
+      tbe.actions.push(Event:SendReadUnique);
+      tbe.actions.push(Event:WriteFEPipe);
+      tbe.actions.push(Event:CheckCacheFill);
+      tbe.actions.push(Event:WriteBEPipe);
+      tbe.actions.push(Event:TagArrayWrite);
+      tbe.atomic_to_be_done := true;
+  } else if (dynamo_enabled && dynamo_want_near) { // DynAMO predicts near
       tbe.actions.push(Event:SendReadUnique);
       tbe.actions.push(Event:WriteFEPipe);
       tbe.actions.push(Event:CheckCacheFill);
@@ -993,7 +1043,36 @@ action(Initiate_AtomicReturn_SD, desc="") {
             address, tbe.requestor);
   }
 
+  // DynAMO-Reuse decision (dynamo.pdf §5.3, plan §5 N3). SD-state. Reuse-PN
+  // variant (dynamo_variant=0) forces near at SD/SC per paper §5.3; Reuse-UN
+  // (variant=1) honors predict_far and forwards to HN.
+  bool dynamo_want_near := false;
+  if (dynamo_enabled) {
+    if (dynamo_table.has(address)) {
+      dynamo_want_near := dynamo_table.predict_near(address);
+    } else {
+      dynamo_want_near := dynamo_table.first_decision_near();
+      dynamo_table.allocate(address);
+    }
+    if (!dynamo_want_near && dynamo_variant == 0) {
+      // Reuse-PN: never go far from SC/SD
+      dynamo_want_near := true;
+    }
+    if (dynamo_want_near) {
+      DPRINTF(DynAMO, "N1:dynamo_near addr=%#x state=SD\n", address);
+    } else {
+      DPRINTF(DynAMO, "N2:dynamo_far addr=%#x state=SD\n", address);
+    }
+  }
+
   if (tbe.use_migrate) {
+    tbe.actions.push(Event:SendReadUnique);
+    tbe.actions.push(Event:WriteFEPipe);
+    tbe.actions.push(Event:CheckCacheFill);
+    tbe.actions.push(Event:WriteBEPipe);
+    tbe.actions.push(Event:TagArrayWrite);
+    tbe.atomic_to_be_done := true;
+  } else if (dynamo_enabled && dynamo_want_near) { // DynAMO predicts near
     tbe.actions.push(Event:SendReadUnique);
     tbe.actions.push(Event:WriteFEPipe);
     tbe.actions.push(Event:CheckCacheFill);
@@ -1031,7 +1110,35 @@ action(Initiate_AtomicNoReturn_SD, desc="") {
             address, tbe.requestor);
   }
 
+  // DynAMO-Reuse decision (dynamo.pdf §5.3, plan §5 N3). SD/SC-state.
+  // Reuse-PN variant (dynamo_variant=0) forces near at SD/SC per paper
+  // §5.3; Reuse-UN (variant=1) honors predict_far and forwards to HN.
+  bool dynamo_want_near := false;
+  if (dynamo_enabled) {
+    if (dynamo_table.has(address)) {
+      dynamo_want_near := dynamo_table.predict_near(address);
+    } else {
+      dynamo_want_near := dynamo_table.first_decision_near();
+      dynamo_table.allocate(address);
+    }
+    if (!dynamo_want_near && dynamo_variant == 0) {
+      dynamo_want_near := true;   // Reuse-PN: never go far from SC/SD
+    }
+    if (dynamo_want_near) {
+      DPRINTF(DynAMO, "N1:dynamo_near addr=%#x state=SDSC\n", address);
+    } else {
+      DPRINTF(DynAMO, "N2:dynamo_far addr=%#x state=SDSC\n", address);
+    }
+  }
+
   if (tbe.use_migrate) {
+    tbe.actions.push(Event:SendReadUnique);
+    tbe.actions.push(Event:WriteFEPipe);
+    tbe.actions.push(Event:CheckCacheFill);
+    tbe.actions.push(Event:WriteBEPipe);
+    tbe.actions.push(Event:TagArrayWrite);
+    tbe.atomic_to_be_done := true;
+  } else if (dynamo_enabled && dynamo_want_near) { // DynAMO predicts near
     tbe.actions.push(Event:SendReadUnique);
     tbe.actions.push(Event:WriteFEPipe);
     tbe.actions.push(Event:CheckCacheFill);
@@ -1069,7 +1176,35 @@ action(Initiate_AtomicReturn_SC, desc="") {
             address, tbe.requestor);
   }
 
+  // DynAMO-Reuse decision (dynamo.pdf §5.3, plan §5 N3). SD/SC-state.
+  // Reuse-PN variant (dynamo_variant=0) forces near at SD/SC per paper
+  // §5.3; Reuse-UN (variant=1) honors predict_far and forwards to HN.
+  bool dynamo_want_near := false;
+  if (dynamo_enabled) {
+    if (dynamo_table.has(address)) {
+      dynamo_want_near := dynamo_table.predict_near(address);
+    } else {
+      dynamo_want_near := dynamo_table.first_decision_near();
+      dynamo_table.allocate(address);
+    }
+    if (!dynamo_want_near && dynamo_variant == 0) {
+      dynamo_want_near := true;   // Reuse-PN: never go far from SC/SD
+    }
+    if (dynamo_want_near) {
+      DPRINTF(DynAMO, "N1:dynamo_near addr=%#x state=SDSC\n", address);
+    } else {
+      DPRINTF(DynAMO, "N2:dynamo_far addr=%#x state=SDSC\n", address);
+    }
+  }
+
   if (tbe.use_migrate) {
+    tbe.actions.push(Event:SendReadUnique);
+    tbe.actions.push(Event:WriteFEPipe);
+    tbe.actions.push(Event:CheckCacheFill);
+    tbe.actions.push(Event:WriteBEPipe);
+    tbe.actions.push(Event:TagArrayWrite);
+    tbe.atomic_to_be_done := true;
+  } else if (dynamo_enabled && dynamo_want_near) { // DynAMO predicts near
     tbe.actions.push(Event:SendReadUnique);
     tbe.actions.push(Event:WriteFEPipe);
     tbe.actions.push(Event:CheckCacheFill);
@@ -1107,7 +1242,35 @@ action(Initiate_AtomicNoReturn_SC, desc="") {
             address, tbe.requestor);
   }
 
+  // DynAMO-Reuse decision (dynamo.pdf §5.3, plan §5 N3). SD/SC-state.
+  // Reuse-PN variant (dynamo_variant=0) forces near at SD/SC per paper
+  // §5.3; Reuse-UN (variant=1) honors predict_far and forwards to HN.
+  bool dynamo_want_near := false;
+  if (dynamo_enabled) {
+    if (dynamo_table.has(address)) {
+      dynamo_want_near := dynamo_table.predict_near(address);
+    } else {
+      dynamo_want_near := dynamo_table.first_decision_near();
+      dynamo_table.allocate(address);
+    }
+    if (!dynamo_want_near && dynamo_variant == 0) {
+      dynamo_want_near := true;   // Reuse-PN: never go far from SC/SD
+    }
+    if (dynamo_want_near) {
+      DPRINTF(DynAMO, "N1:dynamo_near addr=%#x state=SDSC\n", address);
+    } else {
+      DPRINTF(DynAMO, "N2:dynamo_far addr=%#x state=SDSC\n", address);
+    }
+  }
+
   if (tbe.use_migrate) {
+    tbe.actions.push(Event:SendReadUnique);
+    tbe.actions.push(Event:WriteFEPipe);
+    tbe.actions.push(Event:CheckCacheFill);
+    tbe.actions.push(Event:WriteBEPipe);
+    tbe.actions.push(Event:TagArrayWrite);
+    tbe.atomic_to_be_done := true;
+  } else if (dynamo_enabled && dynamo_want_near) { // DynAMO predicts near
     tbe.actions.push(Event:SendReadUnique);
     tbe.actions.push(Event:WriteFEPipe);
     tbe.actions.push(Event:CheckCacheFill);
