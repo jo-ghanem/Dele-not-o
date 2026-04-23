@@ -70,6 +70,7 @@ DebugFlag('RubyResourceStalls')
 DebugFlag('RubyProtocol')
 DebugFlag('DelegateAMO')
 DebugFlag('DynAMO')
+DebugFlag('Delegato')
 DebugFlag('RubyHitMiss')
 
 CompoundFlag('Ruby', [ 'RubyQueue', 'RubyNetwork', 'RubyTester',

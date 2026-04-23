@@ -859,6 +859,12 @@ action(Initiate_Atomic_UC, desc="") {
     tbe.actions.push(Event:AtomicHit);
     tbe.actions.pushNB(Event:DataArrayWrite);
     tbe.actions.pushNB(Event:TagArrayWrite);
+    // Delegato RT heartbeat: local AMO at owner UC/UD counts as reuse
+    // (chiplet.pdf §5.2). No-op at controllers whose RT doesn't track
+    // this address (e.g. L1 or controllers that haven't seen SnpAMO).
+    if (delegato_enabled) {
+      delegato_reuse_table.mark_reused(address);
+    }
   } else {
     error("Invalid policy type");
   }
@@ -874,6 +880,9 @@ action(Initiate_Atomic_UD, desc="") {
     tbe.actions.push(Event:AtomicHit);
     tbe.actions.pushNB(Event:DataArrayWrite);
     tbe.actions.pushNB(Event:TagArrayWrite);
+    if (delegato_enabled) {
+      delegato_reuse_table.mark_reused(address);
+    }
   } else {
     error("Invalid policy type");
   }
@@ -3075,9 +3084,20 @@ action(Receive_SnpResp, desc="") {
     if (in_msg.type == CHIResponseType:SnpResp_UD_AMODone) {
       DPRINTF(DelegateAMO, "B4:recv_snp_resp_amo_done addr=%#x from=%s\n",
               address, in_msg.responder);
+      // Delegato HN learns reuse signal from delegated AMO responses only
+      // (paper §5.2: feedback arrives in SnpResp_UD_AMODone). Other snoop
+      // responses carry default reuse_bit=false and we ignore them.
+      if (delegato_enabled) {
+        delegato_predictor.observe(address, in_msg.reuse_bit, tbe.requestor);
+        DPRINTF(Delegato, "G4:observe addr=%#x reuse=%d req=%s\n",
+                address, in_msg.reuse_bit, tbe.requestor);
+      }
     } else if (in_msg.type == CHIResponseType:SnpResp_Retry_AMO) {
       DPRINTF(DelegateAMO, "B7:recv_snp_resp_retry_amo addr=%#x from=%s\n",
               address, in_msg.responder);
+      if (delegato_enabled) {
+        delegato_predictor.observe(address, in_msg.reuse_bit, tbe.requestor);
+      }
     }
   }
 }
@@ -4368,6 +4388,12 @@ action(Send_SnpAMO, desc="") {
 
 // Owner-side: initialize delegated AMO snoop action queue
 action(Initiate_DelegatedAMOSnoop, desc="") {
+  // Delegato RT heartbeat: L2 owner first sees this line as a delegate
+  // target. Allocate RT entry with reuse=0 (chiplet.pdf §5.2). Subsequent
+  // local AMO at UC/UD will set reuse; next SnpResp consumes+resets it.
+  if (delegato_enabled) {
+    delegato_reuse_table.allocate(address);
+  }
   if (tbe.dir_sharers.count() > 0) {
     // Data may be in upstream L1 — back-invalidate to get exclusive
     // access + fresh data, then proceed with AMO locally.
@@ -4455,11 +4481,18 @@ action(Execute_DelegatedAMO, desc="") {
 action(Send_SnpRespAMODone, desc="") {
   assert(is_valid(tbe));
   DPRINTF(DelegateAMO, "B3:send_snp_resp_amo_done addr=%#x to=%s\n", address, tbe.requestor);
+  // Delegato heartbeat: stamp accumulated reuse + reset RT entry.
+  bool delegato_reuse := false;
+  if (delegato_enabled) {
+    delegato_reuse := delegato_reuse_table.lookup_and_reset(address);
+    DPRINTF(Delegato, "G3:reuse_stamp done addr=%#x reuse=%d\n", address, delegato_reuse);
+  }
   enqueue(rspOutPort, CHIResponseMsg, response_latency) {
     out_msg.addr := address;
     out_msg.type := CHIResponseType:SnpResp_UD_AMODone;
     out_msg.responder := machineID;
     out_msg.Destination.add(tbe.requestor);
+    out_msg.reuse_bit := delegato_reuse;
   }
 }
 
@@ -4467,11 +4500,17 @@ action(Send_SnpRespAMODone, desc="") {
 action(Send_SnpRespRetryAMO, desc="") {
   assert(is_valid(tbe));
   DPRINTF(DelegateAMO, "B6:send_snp_resp_retry_amo addr=%#x to=%s\n", address, tbe.requestor);
+  bool delegato_reuse := false;
+  if (delegato_enabled) {
+    delegato_reuse := delegato_reuse_table.lookup_and_reset(address);
+    DPRINTF(Delegato, "G3:reuse_stamp retry addr=%#x reuse=%d\n", address, delegato_reuse);
+  }
   enqueue(rspOutPort, CHIResponseMsg, response_latency) {
     out_msg.addr := address;
     out_msg.type := CHIResponseType:SnpResp_Retry_AMO;
     out_msg.responder := machineID;
     out_msg.Destination.add(tbe.requestor);
+    out_msg.reuse_bit := delegato_reuse;
   }
 }
 
