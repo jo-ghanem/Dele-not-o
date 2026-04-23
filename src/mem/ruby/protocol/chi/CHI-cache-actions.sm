@@ -4008,9 +4008,9 @@ action(Callback_LoadHit, desc="") {
     // DynAMO-Reuse: mark this line as reused by a non-AMO access
     // (paper §5.3: "if that same cache block receives a subsequent
     // hit by any other memory access"). No-op if line not tracked.
+    // No DPRINTF here — fires on every L1 load hit (millions/workload).
     if (dynamo_enabled) {
       dynamo_table.mark_reused(tbe.addr);
-      DPRINTF(DynAMO, "N3:mark_reused_load addr=%#x\n", tbe.addr);
     }
   }
 }
@@ -4026,10 +4026,9 @@ action(Callback_StoreHit, desc="") {
     DPRINTF(RubySlicc, "Write after %s\n", tbe.dataBlk);
     tbe.dataDirty := true;
     // DynAMO-Reuse: non-AMO store counts as reuse (paper §5.3). No-op if
-    // line not tracked in AMT.
+    // line not tracked in AMT. No DPRINTF — high frequency.
     if (dynamo_enabled) {
       dynamo_table.mark_reused(tbe.addr);
-      DPRINTF(DynAMO, "N3:mark_reused_store addr=%#x\n", tbe.addr);
     }
   }
 }
