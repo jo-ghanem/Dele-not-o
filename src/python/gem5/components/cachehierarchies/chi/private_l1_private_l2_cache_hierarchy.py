@@ -234,12 +234,6 @@ class PrivateL1PrivateL2CacheHierarchy(
         cluster.dcache.dynamo_variant = self._dynamo_variant
         cluster.dcache.delegato_enabled = self._delegato_enabled
         cluster.dcache.delegato_variant = self._delegato_variant
-        # Also icache + L2 so the ReuseTable runs wherever a controller
-        # could be the owner L2 for a delegated line.
-        cluster.icache.delegato_enabled = self._delegato_enabled
-        cluster.icache.delegato_variant = self._delegato_variant
-        cluster.l2.delegato_enabled = self._delegato_enabled
-        cluster.l2.delegato_variant = self._delegato_variant
         cluster.icache = L1CacheController(
             size=self._l1i_size,
             assoc=self._l1i_assoc,
@@ -264,6 +258,8 @@ class PrivateL1PrivateL2CacheHierarchy(
         )
 
         cluster.icache.hn_amo_policy = self._hn_amo_policy
+        cluster.icache.delegato_enabled = self._delegato_enabled
+        cluster.icache.delegato_variant = self._delegato_variant
 
         cluster.l2 = L2CacheController(
             size=self._l2_size,
@@ -274,6 +270,8 @@ class PrivateL1PrivateL2CacheHierarchy(
             atomic_op_latency=self._atomic_op_latency,
         )
         cluster.l2.hn_amo_policy = self._hn_amo_policy
+        cluster.l2.delegato_enabled = self._delegato_enabled
+        cluster.l2.delegato_variant = self._delegato_variant
 
         if board.has_io_bus():
             cluster.dcache.sequencer.connectIOPorts(board.get_io_bus())
