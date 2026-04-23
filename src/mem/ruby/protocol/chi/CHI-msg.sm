@@ -175,6 +175,11 @@ structure(CHIResponseMsg, desc="", interface="Message") {
   Addr txnId,           desc="Transaction ID", default="0";
   Addr dbid,            desc="Data Buffer ID", default="0";
   //NOTE: not in CHI and for debuging only
+  // Delegato reuse_bit (chiplet.pdf §5.2): L2 owner stamps this on SnpResp
+  // to tell the directory whether the delegated line has been re-touched
+  // since the last delegate transaction. Consumed by Delegato predictor
+  // at HN. Default false — harmless for non-Delegato flows.
+  bool reuse_bit,       desc="Delegato heartbeat", default="false";
 
   MessageSizeType MessageSize, default="MessageSizeType_Control";
 
