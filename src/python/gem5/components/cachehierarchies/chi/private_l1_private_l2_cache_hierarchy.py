@@ -213,6 +213,7 @@ class PrivateL1PrivateL2CacheHierarchy(
             clk_domain=board.get_clock_domain(),
         )
         cluster.dcache.policy_type = self._policy_type
+        cluster.dcache.hn_amo_policy = self._hn_amo_policy
         cluster.icache = L1CacheController(
             size=self._l1i_size,
             assoc=self._l1i_assoc,
@@ -236,6 +237,8 @@ class PrivateL1PrivateL2CacheHierarchy(
             ruby_system=self.ruby_system,
         )
 
+        cluster.icache.hn_amo_policy = self._hn_amo_policy
+
         cluster.l2 = L2CacheController(
             size=self._l2_size,
             assoc=self._l2_assoc,
@@ -244,6 +247,7 @@ class PrivateL1PrivateL2CacheHierarchy(
             clk_domain=board.get_clock_domain(),
             atomic_op_latency=self._atomic_op_latency,
         )
+        cluster.l2.hn_amo_policy = self._hn_amo_policy
 
         if board.has_io_bus():
             cluster.dcache.sequencer.connectIOPorts(board.get_io_bus())
