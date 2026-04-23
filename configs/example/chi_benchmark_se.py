@@ -48,13 +48,19 @@ parser.add_argument(
 )
 parser.add_argument("--num-cores", type=int, default=4)
 parser.add_argument("--hn-amo-policy", type=int, default=0,
-    help="0=All-Central, 1=Pinned-Owner, 2=Unowned-Central")
+    help="0=All-Central, 1=Pinned-Owner, 2=Unowned-Central, 3=All-Migrate")
 parser.add_argument("--cpu-type", type=str, default="timing",
     choices=["timing", "atomic", "o3"],
     help="CPU type (timing recommended for protocol testing)")
 parser.add_argument("--l1d-size", type=str, default="32KiB")
 parser.add_argument("--l2-size", type=str, default="256KiB")
 parser.add_argument("--mem-size", type=str, default="512MiB")
+parser.add_argument("--dynamo-enabled", action="store_true",
+    help="Enable DynAMO-Reuse L1 predictor (dynamo.pdf ISCA'23 §5)")
+parser.add_argument("--dynamo-threshold", type=int, default=1,
+    help="DynAMO confidence threshold (near iff conf > threshold)")
+parser.add_argument("--dynamo-variant", type=int, default=0,
+    help="0=Reuse-PN (default), 1=Reuse-UN, 2=metric")
 args = parser.parse_args()
 
 cpu_type_map = {
@@ -73,6 +79,9 @@ cache_hierarchy = PrivateL1PrivateL2CacheHierarchy(
     hn_amo_policy=args.hn_amo_policy,
     atomic_op_latency=4,
     policy_type=1,
+    dynamo_enabled=args.dynamo_enabled,
+    dynamo_threshold=args.dynamo_threshold,
+    dynamo_variant=args.dynamo_variant,
 )
 
 memory = SingleChannelDDR3_1600(size=args.mem_size)

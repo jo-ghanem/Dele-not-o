@@ -101,6 +101,9 @@ class PrivateL1PrivateL2CacheHierarchy(
         hn_amo_policy: int = 0,
         atomic_op_latency: int = 4,
         policy_type: int = 0,
+        dynamo_enabled: bool = False,
+        dynamo_threshold: int = 1,
+        dynamo_variant: int = 0,
     ):
         """
         :param l1i_size: The size of the L1 Instruction cache
@@ -109,9 +112,12 @@ class PrivateL1PrivateL2CacheHierarchy(
         :param l1d_assoc: The associativity of the L1 Data cache
         :param l2_size: The size of the L2 cache
         :param l2_assoc: The associativity of the L2 cache
-        :param hn_amo_policy: AMO policy (0=Central, 1=Pinned-Owner, 2=Unowned-Central)
+        :param hn_amo_policy: AMO policy (0=Central, 1=Pinned-Owner, 2=Unowned-Central, 3=All-Migrate)
         :param atomic_op_latency: Cycles for atomic ALU operation
         :param policy_type: L1 atomic policy (0=near-AMO, 1/2=forward to HN)
+        :param dynamo_enabled: Enable DynAMO-Reuse L1 predictor (dynamo.pdf §5)
+        :param dynamo_threshold: Per-entry confidence threshold (near iff conf > threshold); runtime knob
+        :param dynamo_variant: 0=Reuse-PN (default), 1=Reuse-UN, 2=metric
         """
         AbstractRubyCacheHierarchy.__init__(self=self)
         AbstractTwoLevelCacheHierarchy.__init__(
@@ -126,6 +132,9 @@ class PrivateL1PrivateL2CacheHierarchy(
         self._hn_amo_policy = hn_amo_policy
         self._atomic_op_latency = atomic_op_latency
         self._policy_type = policy_type
+        self._dynamo_enabled = dynamo_enabled
+        self._dynamo_threshold = dynamo_threshold
+        self._dynamo_variant = dynamo_variant
 
     @overrides(AbstractCacheHierarchy)
     def get_coherence_protocol(self):
@@ -214,6 +223,9 @@ class PrivateL1PrivateL2CacheHierarchy(
         )
         cluster.dcache.policy_type = self._policy_type
         cluster.dcache.hn_amo_policy = self._hn_amo_policy
+        cluster.dcache.dynamo_enabled = self._dynamo_enabled
+        cluster.dcache.dynamo_threshold = self._dynamo_threshold
+        cluster.dcache.dynamo_variant = self._dynamo_variant
         cluster.icache = L1CacheController(
             size=self._l1i_size,
             assoc=self._l1i_assoc,
