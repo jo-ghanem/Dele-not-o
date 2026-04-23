@@ -885,7 +885,17 @@ action(Initiate_AtomicReturn_I, desc="") {
                       tbe.dir_ownerExists && tbe.dir_ownerIsExcl &&
                       (tbe.dir_owner != tbe.requestor);
 
-  tbe.use_migrate := is_HN && (hn_amo_policy == 3);
+  // FIX: removed `is_HN && ` guard. These 6 actions (Initiate_Atomic*_{I,SD,SC})
+  // fire at L1 side per transition table (state I/SD/SC + AtomicLoad/Store
+  // dispatches here), so is_HN is false and use_migrate never fired.
+  // Migrate per chiplet.pdf §4.1 = "requester L1 fetches the line and runs
+  // AMO near" — the action sequence below (SendReadUnique + WriteFEPipe +
+  // near-AMO) already does that; we just needed to let it fire at L1.
+  tbe.use_migrate := (hn_amo_policy == 3);
+  if (tbe.use_migrate) {
+    DPRINTF(DelegateAMO, "M1:migrate_decision addr=%#x req=%s\n",
+            address, tbe.requestor);
+  }
 
   if (tbe.use_delegate) {
       tbe.actions.push(Event:SendSnpAMO);
@@ -925,7 +935,17 @@ action(Initiate_AtomicNoReturn_I, desc="") {
                       tbe.dir_ownerExists && tbe.dir_ownerIsExcl &&
                       (tbe.dir_owner != tbe.requestor);
 
-  tbe.use_migrate := is_HN && (hn_amo_policy == 3);
+  // FIX: removed `is_HN && ` guard. These 6 actions (Initiate_Atomic*_{I,SD,SC})
+  // fire at L1 side per transition table (state I/SD/SC + AtomicLoad/Store
+  // dispatches here), so is_HN is false and use_migrate never fired.
+  // Migrate per chiplet.pdf §4.1 = "requester L1 fetches the line and runs
+  // AMO near" — the action sequence below (SendReadUnique + WriteFEPipe +
+  // near-AMO) already does that; we just needed to let it fire at L1.
+  tbe.use_migrate := (hn_amo_policy == 3);
+  if (tbe.use_migrate) {
+    DPRINTF(DelegateAMO, "M1:migrate_decision addr=%#x req=%s\n",
+            address, tbe.requestor);
+  }
 
   if (tbe.use_delegate) {
       tbe.actions.push(Event:SendSnpAMO);
@@ -961,7 +981,17 @@ action(Initiate_AtomicNoReturn_I, desc="") {
 }
 
 action(Initiate_AtomicReturn_SD, desc="") {
-  tbe.use_migrate := is_HN && (hn_amo_policy == 3);
+  // FIX: removed `is_HN && ` guard. These 6 actions (Initiate_Atomic*_{I,SD,SC})
+  // fire at L1 side per transition table (state I/SD/SC + AtomicLoad/Store
+  // dispatches here), so is_HN is false and use_migrate never fired.
+  // Migrate per chiplet.pdf §4.1 = "requester L1 fetches the line and runs
+  // AMO near" — the action sequence below (SendReadUnique + WriteFEPipe +
+  // near-AMO) already does that; we just needed to let it fire at L1.
+  tbe.use_migrate := (hn_amo_policy == 3);
+  if (tbe.use_migrate) {
+    DPRINTF(DelegateAMO, "M1:migrate_decision addr=%#x req=%s\n",
+            address, tbe.requestor);
+  }
 
   if (tbe.use_migrate) {
     tbe.actions.push(Event:SendReadUnique);
@@ -989,7 +1019,17 @@ action(Initiate_AtomicReturn_SD, desc="") {
 }
 
 action(Initiate_AtomicNoReturn_SD, desc="") {
-  tbe.use_migrate := is_HN && (hn_amo_policy == 3);
+  // FIX: removed `is_HN && ` guard. These 6 actions (Initiate_Atomic*_{I,SD,SC})
+  // fire at L1 side per transition table (state I/SD/SC + AtomicLoad/Store
+  // dispatches here), so is_HN is false and use_migrate never fired.
+  // Migrate per chiplet.pdf §4.1 = "requester L1 fetches the line and runs
+  // AMO near" — the action sequence below (SendReadUnique + WriteFEPipe +
+  // near-AMO) already does that; we just needed to let it fire at L1.
+  tbe.use_migrate := (hn_amo_policy == 3);
+  if (tbe.use_migrate) {
+    DPRINTF(DelegateAMO, "M1:migrate_decision addr=%#x req=%s\n",
+            address, tbe.requestor);
+  }
 
   if (tbe.use_migrate) {
     tbe.actions.push(Event:SendReadUnique);
@@ -1017,7 +1057,17 @@ action(Initiate_AtomicNoReturn_SD, desc="") {
 }
 
 action(Initiate_AtomicReturn_SC, desc="") {
-  tbe.use_migrate := is_HN && (hn_amo_policy == 3);
+  // FIX: removed `is_HN && ` guard. These 6 actions (Initiate_Atomic*_{I,SD,SC})
+  // fire at L1 side per transition table (state I/SD/SC + AtomicLoad/Store
+  // dispatches here), so is_HN is false and use_migrate never fired.
+  // Migrate per chiplet.pdf §4.1 = "requester L1 fetches the line and runs
+  // AMO near" — the action sequence below (SendReadUnique + WriteFEPipe +
+  // near-AMO) already does that; we just needed to let it fire at L1.
+  tbe.use_migrate := (hn_amo_policy == 3);
+  if (tbe.use_migrate) {
+    DPRINTF(DelegateAMO, "M1:migrate_decision addr=%#x req=%s\n",
+            address, tbe.requestor);
+  }
 
   if (tbe.use_migrate) {
     tbe.actions.push(Event:SendReadUnique);
@@ -1045,7 +1095,17 @@ action(Initiate_AtomicReturn_SC, desc="") {
 }
 
 action(Initiate_AtomicNoReturn_SC, desc="") {
-  tbe.use_migrate := is_HN && (hn_amo_policy == 3);
+  // FIX: removed `is_HN && ` guard. These 6 actions (Initiate_Atomic*_{I,SD,SC})
+  // fire at L1 side per transition table (state I/SD/SC + AtomicLoad/Store
+  // dispatches here), so is_HN is false and use_migrate never fired.
+  // Migrate per chiplet.pdf §4.1 = "requester L1 fetches the line and runs
+  // AMO near" — the action sequence below (SendReadUnique + WriteFEPipe +
+  // near-AMO) already does that; we just needed to let it fire at L1.
+  tbe.use_migrate := (hn_amo_policy == 3);
+  if (tbe.use_migrate) {
+    DPRINTF(DelegateAMO, "M1:migrate_decision addr=%#x req=%s\n",
+            address, tbe.requestor);
+  }
 
   if (tbe.use_migrate) {
     tbe.actions.push(Event:SendReadUnique);
@@ -3795,6 +3855,7 @@ action(Callback_AtomicHit, desc="") {
   assert((tbe.reqType == CHIRequestType:AtomicLoad) ||
          (tbe.reqType == CHIRequestType:AtomicStore));
   DPRINTF(RubySlicc, "Atomic before %s\n", tbe.dataBlk);
+  DPRINTF(DelegateAMO, "C3:l1_near_atomic_partial addr=%#x\n", tbe.addr);
 
   DataBlock oldDataBlk;
   oldDataBlk := tbe.dataBlk;
