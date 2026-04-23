@@ -1578,6 +1578,15 @@ action(Initiate_MaintainCoherence, desc="") {
 // Too many common stuff between SnpUnique/SnpUniqueFwd/SnpCleanInvalid
 // so do one action for all of them here
 action(Initiate_InvalidationSnoop, desc="") {
+  // DynAMO-Reuse: invalidating snoop → update confidence and evict the
+  // AMT entry. If reuse_bit was set since the last update, confidence++
+  // and g_reused++; else confidence--. Then drop the AMT entry since the
+  // line is leaving the L1D (paper §5.3).
+  if (dynamo_enabled) {
+    dynamo_table.update_confidence(address);
+    dynamo_table.evict(address);
+    DPRINTF(DynAMO, "N3:update_confidence_snoop addr=%#x\n", address);
+  }
   tbe.actions.push(Event:SnpInvPipe);
   // Propagate a snoop upwards depending on the type
   if (tbe.dir_sharers.count() > 0) {
@@ -3833,6 +3842,13 @@ action(Callback_LoadHit, desc="") {
     assert(tbe.dataValid);
     DPRINTF(RubySlicc, "Read data %s\n", tbe.dataBlk);
     sequencer.readCallback(tbe.addr, tbe.dataBlk, false);
+    // DynAMO-Reuse: mark this line as reused by a non-AMO access
+    // (paper §5.3: "if that same cache block receives a subsequent
+    // hit by any other memory access"). No-op if line not tracked.
+    if (dynamo_enabled) {
+      dynamo_table.mark_reused(tbe.addr);
+      DPRINTF(DynAMO, "N3:mark_reused_load addr=%#x\n", tbe.addr);
+    }
   }
 }
 
@@ -3846,6 +3862,12 @@ action(Callback_StoreHit, desc="") {
     sequencer.writeCallback(tbe.addr, tbe.dataBlk, false);
     DPRINTF(RubySlicc, "Write after %s\n", tbe.dataBlk);
     tbe.dataDirty := true;
+    // DynAMO-Reuse: non-AMO store counts as reuse (paper §5.3). No-op if
+    // line not tracked in AMT.
+    if (dynamo_enabled) {
+      dynamo_table.mark_reused(tbe.addr);
+      DPRINTF(DynAMO, "N3:mark_reused_store addr=%#x\n", tbe.addr);
+    }
   }
 }
 
