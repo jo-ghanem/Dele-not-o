@@ -120,6 +120,8 @@ if env['CONF']['RUBY_PROTOCOL_CHI']:
     MakeInclude('structures/MN_TBEStorage.hh')
     MakeInclude('structures/MN_TBETable.hh')
     MakeInclude('structures/DynAMOTable.hh')
+    MakeInclude('structures/DelegatoReuseTable.hh')
+    MakeInclude('structures/DelegatoPredictor.hh')
 MakeInclude('structures/TBETable.hh')
 MakeInclude('structures/TimerTable.hh')
 MakeInclude('structures/WireBuffer.hh')

@@ -154,6 +154,17 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   int dynamo_threshold_max := 7;  // saturation cap (5-bit per paper §5.3)
   int dynamo_variant := 0;        // 0=Reuse-PN default, 1=Reuse-UN, 2=metric
 
+  // Delegato predictor (chiplet.pdf §5.3, per-HN and per-L2).
+  // Activated by hn_amo_policy=4 at the HN; L2 stamps reuse_bit onto
+  // delegate SnpResps so the HN's predictor can update its PT FSM.
+  // See plan §6 + docs/delegato_fsm.md for full design.
+  bool delegato_enabled := "False";
+  int delegato_pt_entries := 128;  // paper baseline (chiplet.pdf §6.7)
+  int delegato_pt_assoc := 2;      // paper baseline 2-way
+  int delegato_rt_entries := 128;
+  int delegato_rt_assoc := 2;
+  int delegato_variant := 0;       // 0=FSM, 1=AlwaysDelegate, 2=AlwaysMigrate, 3=AlwaysCentralize
+
   // Use separate Comp/DBIDResp responses for WriteUnique
   bool comp_wu := "False";
   // additional latency for the WU Comp response
@@ -640,6 +651,26 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     void note_amo_fetch();
   }
 
+  // Delegato Reuse Table (chiplet.pdf §5.2, plan §6 G3). Per-L2 heartbeat
+  // table. Paper-faithful lifecycle: allocate on SnpAMO, mark_reused on
+  // local AMO at UC/UD, consume+reset on SnpResp emission, evict on L2
+  // line dealloc. See delegato_fsm.md.
+  structure(DelegatoReuseTable, external = "yes") {
+    bool has(Addr);
+    void allocate(Addr);
+    void mark_reused(Addr);
+    bool lookup_and_reset(Addr);
+    void evict(Addr);
+  }
+
+  // Delegato Predictor Table (chiplet.pdf §5.3, plan §6). Per-HN.
+  // Variant-dispatched C++ — 0=FSM (paper), 1..3=static baselines for
+  // ablation. Returns int decision: 0=Centralize, 1=Delegate, 2=Migrate.
+  structure(DelegatoPredictor, external = "yes") {
+    int decide(Addr, MachineID, bool);
+    void observe(Addr, bool, MachineID);
+  }
+
   // Helper class for tracking expected response and data messages
   structure(ExpectedMap, external ="yes") {
     void clear(int dataChunks);
@@ -861,6 +892,12 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // DynAMO-Reuse predictor AMT. Instantiated on every controller; only
   // consumed at L1 when dynamo_enabled == true. Sized per Python params.
   DynAMOTable dynamo_table, constructor="m_dynamo_entries, m_dynamo_assoc, m_dynamo_threshold, m_dynamo_threshold_max";
+
+  // Delegato tables. RT only used at L2 (owner side); PT only at HN.
+  // Instantiated on every controller for SLICC uniformity; consumers
+  // gate on delegato_enabled.
+  DelegatoReuseTable delegato_reuse_table, constructor="m_delegato_rt_entries, m_delegato_rt_assoc";
+  DelegatoPredictor delegato_predictor, constructor="m_delegato_pt_entries, m_delegato_pt_assoc, m_delegato_variant";
 
   // Main TBE table used for incoming requests
   TBETable TBEs,      template="<Cache_TBE>", constructor="m_number_of_TBEs";
