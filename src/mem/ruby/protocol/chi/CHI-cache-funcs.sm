@@ -226,7 +226,8 @@ void setAccessPermission(CacheEntry cache_entry, Addr addr, State state) {
 // RubySlicc_ComponentMapping.sm — the SLICC `external_type(MachineID)` itself
 // has no visible fields, so direct id.num doesn't compile.
 int chipletOf(MachineID id) {
-  int n := machineIDToNodeID(id);
+  NodeID nid := machineIDToNodeID(id);
+  int n := IDToInt(nid);
   if (n < num_chiplets) {
     return n;
   }
