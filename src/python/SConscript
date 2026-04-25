@@ -83,6 +83,9 @@ PySource('gem5.components.cachehierarchies.chi',
 PySource('gem5.components.cachehierarchies.chi',
     'gem5/components/cachehierarchies/chi/'
     'private_l1_private_l2_cache_hierarchy.py')
+PySource('gem5.components.cachehierarchies.chi',
+    'gem5/components/cachehierarchies/chi/'
+    'dual_chiplet_private_l1_l2_cache_hierarchy.py')
 PySource('gem5.components.cachehierarchies.chi.nodes',
     'gem5/components/cachehierarchies/chi/nodes/__init__.py')
 PySource('gem5.components.cachehierarchies.chi.nodes',
@@ -220,6 +223,8 @@ PySource('gem5.components.cachehierarchies.ruby.topologies',
     'gem5/components/cachehierarchies/ruby/topologies/__init__.py')
 PySource('gem5.components.cachehierarchies.ruby.topologies',
     'gem5/components/cachehierarchies/ruby/topologies/simple_pt2pt.py')
+PySource('gem5.components.cachehierarchies.ruby.topologies',
+    'gem5/components/cachehierarchies/ruby/topologies/chiplet_pt2pt.py')
 
 PySource('gem5.components.devices',
     'gem5/components/devices/__init__.py')
