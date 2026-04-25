@@ -298,17 +298,19 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
                 ("icache", cluster.icache),
                 ("l2", cluster.l2),
             ):
-                got = slicc_chiplet_of(ctrl.version)
+                ver = int(ctrl.version)
+                got = slicc_chiplet_of(ver)
                 if got != expected:
                     slicc_failures.append(
-                        f"cluster[{i}].{tag}: version={ctrl.version}, "
+                        f"cluster[{i}].{tag}: version={ver}, "
                         f"slicc_chipletOf={got}, expected={expected}"
                     )
         for i, hn in enumerate(self.directories):
-            got = slicc_chiplet_of(hn.version)
+            ver = int(hn.version)
+            got = slicc_chiplet_of(ver)
             if got != i:
                 slicc_failures.append(
-                    f"directories[{i}]: version={hn.version}, "
+                    f"directories[{i}]: version={ver}, "
                     f"slicc_chipletOf={got}, expected={i}"
                 )
         if slicc_failures:
