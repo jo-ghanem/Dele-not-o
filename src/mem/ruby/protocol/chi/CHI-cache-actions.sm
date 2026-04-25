@@ -3435,6 +3435,11 @@ action(CheckWUComp, desc="") {
 
 action(Send_ARData, desc="") {
   assert(is_valid(tbe));
+  // DR6: requester sends operand bytes direct to AMO destination (owner under
+  // delegate path; HN under all-central / migrate). For delegate AMO this is
+  // paper §4.1 SourceData R→O.
+  DPRINTF(DelegateAMO, "DR6:req_to_dst_ardata addr=%#x dst=%s\n",
+          address, tbe.amo_operand_dest);
   tbe.snd_msgType := CHIDataType:NCBWrData;
   tbe.snd_destination := tbe.amo_operand_dest;
   setupPendingAtomicSend(tbe);
@@ -4589,9 +4594,12 @@ action(Initiate_DelegatedAMOSnoop, desc="") {
   }
 }
 
-// Owner-side: send DBIDResp to original requester
+// Owner-side: send DBIDResp to original requester (paper §4.1 ReqAck-equivalent;
+// also carries owner's MachineID so requester can address SourceData direct to owner)
 action(Send_DBIDResp_SnpAMO, desc="") {
   assert(is_valid(tbe));
+  DPRINTF(DelegateAMO, "DR3:owner_to_req_dbidresp addr=%#x dst=%s\n",
+          address, tbe.fwdRequestor);
   enqueue(rspOutPort, CHIResponseMsg, response_latency) {
     out_msg.addr := address;
     out_msg.type := CHIResponseType:DBIDResp;
@@ -4600,11 +4608,13 @@ action(Send_DBIDResp_SnpAMO, desc="") {
   }
 }
 
-// Owner-side: send pre-image data to requester (AR only)
+// Owner-side: send pre-image data direct to requester (AR only; paper §4.1 Resp-equivalent)
 action(Send_CompData_SnpAMO, desc="") {
   assert(is_valid(tbe));
   assert(tbe.dataValid);
   assert(tbe.dataToFwdRequestor);
+  DPRINTF(DelegateAMO, "DR1:owner_to_req_compdata addr=%#x dst=%s\n",
+          address, tbe.fwdRequestor);
   tbe.snd_msgType := CHIDataType:CompData_I;
   tbe.snd_destination := tbe.fwdRequestor;
   setupPendingSend(tbe);
@@ -4629,10 +4639,12 @@ action(Execute_DelegatedAMO, desc="") {
   DPRINTF(DelegateAMO, "C2:owner_atomic_partial_done addr=%#x after=%s\n", address, tbe.dataBlk);
 }
 
-// Stage 5: owner sends SnpResp_UD_AMODone to HN
+// Stage 5: owner sends SnpResp_UD_AMODone to HN (slim — no data payload, just reuse_bit)
+// Paper §4.1: "the line owner notifies the directory of the completion of the snoop transaction"
 action(Send_SnpRespAMODone, desc="") {
   assert(is_valid(tbe));
   DPRINTF(DelegateAMO, "B3:send_snp_resp_amo_done addr=%#x to=%s\n", address, tbe.requestor);
+  DPRINTF(DelegateAMO, "DR2:owner_to_hn_slim_snpresp addr=%#x dst=%s\n", address, tbe.requestor);
   // Delegato heartbeat: stamp accumulated reuse + reset RT entry.
   bool delegato_reuse := false;
   if (delegato_enabled) {
