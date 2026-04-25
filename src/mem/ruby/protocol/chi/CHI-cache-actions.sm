@@ -1432,9 +1432,25 @@ action(Initiate_AtomicReturn_LocalWrite, desc="") {
   // path as Delegate since gem5 CHI has no separate HN-migrate
   // transaction — documented simplification in delegato_fsm.md).
   if (is_HN && hn_amo_policy == 4 && delegato_enabled) {
-    int delegato_dec := delegato_predictor.decide(address, tbe.requestor, false);
-    DPRINTF(Delegato, "G5:decide addr=%#x req=%s dec=%d owner_ok=%d\n",
-            address, tbe.requestor, delegato_dec,
+    // Stage 4 of wiggly-seeking-swing: Table 2 chiplet-aware CA decision.
+    // Single-chiplet mode (num_chiplets<=1) preserves the prior behavior:
+    // ca_hint_migrate=false. Multi-chiplet uses reqLocal() / owner-locality
+    // for full Table 2.  See chipletOf() caveat in CHI-cache-funcs.sm.
+    bool req_is_local := false;
+    bool owner_local := false;
+    if (num_chiplets > 1) {
+      req_is_local := reqLocal(tbe.requestor);
+      owner_local  := tbe.dir_ownerExists && (chipletOf(tbe.dir_owner) == chiplet_id);
+    }
+    int delegato_dec := delegato_predictor.decide(address, tbe.requestor, req_is_local);
+    // Table 2 post-override (chiplet only): RU × Own.Remote must be C, not D.
+    if ((num_chiplets > 1) && (delegato_dec == 1)
+        && tbe.dir_ownerExists && tbe.dir_ownerIsExcl
+        && (owner_local == false)) {
+      delegato_dec := 0;
+    }
+    DPRINTF(Delegato, "G5:decide addr=%#x req=%s req_local=%d owner_local=%d dec=%d owner_ok=%d\n",
+            address, tbe.requestor, req_is_local, owner_local, delegato_dec,
             tbe.dir_ownerExists && tbe.dir_ownerIsExcl && (tbe.dir_owner != tbe.requestor));
     if (delegato_dec == 0) {
       tbe.use_delegate := false;  // Centralize
@@ -1479,9 +1495,25 @@ action(Initiate_AtomicReturn_WriteBack, desc="") {
   // path as Delegate since gem5 CHI has no separate HN-migrate
   // transaction — documented simplification in delegato_fsm.md).
   if (is_HN && hn_amo_policy == 4 && delegato_enabled) {
-    int delegato_dec := delegato_predictor.decide(address, tbe.requestor, false);
-    DPRINTF(Delegato, "G5:decide addr=%#x req=%s dec=%d owner_ok=%d\n",
-            address, tbe.requestor, delegato_dec,
+    // Stage 4 of wiggly-seeking-swing: Table 2 chiplet-aware CA decision.
+    // Single-chiplet mode (num_chiplets<=1) preserves the prior behavior:
+    // ca_hint_migrate=false. Multi-chiplet uses reqLocal() / owner-locality
+    // for full Table 2.  See chipletOf() caveat in CHI-cache-funcs.sm.
+    bool req_is_local := false;
+    bool owner_local := false;
+    if (num_chiplets > 1) {
+      req_is_local := reqLocal(tbe.requestor);
+      owner_local  := tbe.dir_ownerExists && (chipletOf(tbe.dir_owner) == chiplet_id);
+    }
+    int delegato_dec := delegato_predictor.decide(address, tbe.requestor, req_is_local);
+    // Table 2 post-override (chiplet only): RU × Own.Remote must be C, not D.
+    if ((num_chiplets > 1) && (delegato_dec == 1)
+        && tbe.dir_ownerExists && tbe.dir_ownerIsExcl
+        && (owner_local == false)) {
+      delegato_dec := 0;
+    }
+    DPRINTF(Delegato, "G5:decide addr=%#x req=%s req_local=%d owner_local=%d dec=%d owner_ok=%d\n",
+            address, tbe.requestor, req_is_local, owner_local, delegato_dec,
             tbe.dir_ownerExists && tbe.dir_ownerIsExcl && (tbe.dir_owner != tbe.requestor));
     if (delegato_dec == 0) {
       tbe.use_delegate := false;  // Centralize
@@ -1528,9 +1560,25 @@ action(Initiate_AtomicNoReturn_LocalWrite, desc="") {
   // path as Delegate since gem5 CHI has no separate HN-migrate
   // transaction — documented simplification in delegato_fsm.md).
   if (is_HN && hn_amo_policy == 4 && delegato_enabled) {
-    int delegato_dec := delegato_predictor.decide(address, tbe.requestor, false);
-    DPRINTF(Delegato, "G5:decide addr=%#x req=%s dec=%d owner_ok=%d\n",
-            address, tbe.requestor, delegato_dec,
+    // Stage 4 of wiggly-seeking-swing: Table 2 chiplet-aware CA decision.
+    // Single-chiplet mode (num_chiplets<=1) preserves the prior behavior:
+    // ca_hint_migrate=false. Multi-chiplet uses reqLocal() / owner-locality
+    // for full Table 2.  See chipletOf() caveat in CHI-cache-funcs.sm.
+    bool req_is_local := false;
+    bool owner_local := false;
+    if (num_chiplets > 1) {
+      req_is_local := reqLocal(tbe.requestor);
+      owner_local  := tbe.dir_ownerExists && (chipletOf(tbe.dir_owner) == chiplet_id);
+    }
+    int delegato_dec := delegato_predictor.decide(address, tbe.requestor, req_is_local);
+    // Table 2 post-override (chiplet only): RU × Own.Remote must be C, not D.
+    if ((num_chiplets > 1) && (delegato_dec == 1)
+        && tbe.dir_ownerExists && tbe.dir_ownerIsExcl
+        && (owner_local == false)) {
+      delegato_dec := 0;
+    }
+    DPRINTF(Delegato, "G5:decide addr=%#x req=%s req_local=%d owner_local=%d dec=%d owner_ok=%d\n",
+            address, tbe.requestor, req_is_local, owner_local, delegato_dec,
             tbe.dir_ownerExists && tbe.dir_ownerIsExcl && (tbe.dir_owner != tbe.requestor));
     if (delegato_dec == 0) {
       tbe.use_delegate := false;  // Centralize
@@ -1581,9 +1629,25 @@ action(Initiate_AtomicNoReturn_WriteBack, desc="") {
   // path as Delegate since gem5 CHI has no separate HN-migrate
   // transaction — documented simplification in delegato_fsm.md).
   if (is_HN && hn_amo_policy == 4 && delegato_enabled) {
-    int delegato_dec := delegato_predictor.decide(address, tbe.requestor, false);
-    DPRINTF(Delegato, "G5:decide addr=%#x req=%s dec=%d owner_ok=%d\n",
-            address, tbe.requestor, delegato_dec,
+    // Stage 4 of wiggly-seeking-swing: Table 2 chiplet-aware CA decision.
+    // Single-chiplet mode (num_chiplets<=1) preserves the prior behavior:
+    // ca_hint_migrate=false. Multi-chiplet uses reqLocal() / owner-locality
+    // for full Table 2.  See chipletOf() caveat in CHI-cache-funcs.sm.
+    bool req_is_local := false;
+    bool owner_local := false;
+    if (num_chiplets > 1) {
+      req_is_local := reqLocal(tbe.requestor);
+      owner_local  := tbe.dir_ownerExists && (chipletOf(tbe.dir_owner) == chiplet_id);
+    }
+    int delegato_dec := delegato_predictor.decide(address, tbe.requestor, req_is_local);
+    // Table 2 post-override (chiplet only): RU × Own.Remote must be C, not D.
+    if ((num_chiplets > 1) && (delegato_dec == 1)
+        && tbe.dir_ownerExists && tbe.dir_ownerIsExcl
+        && (owner_local == false)) {
+      delegato_dec := 0;
+    }
+    DPRINTF(Delegato, "G5:decide addr=%#x req=%s req_local=%d owner_local=%d dec=%d owner_ok=%d\n",
+            address, tbe.requestor, req_is_local, owner_local, delegato_dec,
             tbe.dir_ownerExists && tbe.dir_ownerIsExcl && (tbe.dir_owner != tbe.requestor));
     if (delegato_dec == 0) {
       tbe.use_delegate := false;  // Centralize
