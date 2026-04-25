@@ -210,10 +210,10 @@ void setAccessPermission(CacheEntry cache_entry, Addr addr, State state) {
 //                                                     N=num_chiplets and
 //                                                     cpc=cores_per_chiplet
 //
-// The formula below recovers chiplet membership from a MachineID.num using
-// that ordering. It is FRAGILE: if anyone reorders controller creation or
-// changes the controllers-per-core count from 3, this breaks silently. The
-// elaboration-time hard assertion in DualChiplet._assert_chiplet_mapping
+// The formula below recovers chiplet membership from a MachineID's NodeID
+// using that ordering. It is FRAGILE: if anyone reorders controller creation
+// or changes the controllers-per-core count from 3, this breaks silently.
+// The elaboration-time hard assertion in DualChiplet._assert_chiplet_mapping
 // verifies the formula matches the explicit Python controller_to_chiplet map
 // before any sweep runs. If/when the assertion trips, the documented fix is
 // to replace the body with a true C++ extern keyed by MachineID (plan §8 D4
@@ -221,11 +221,16 @@ void setAccessPermission(CacheEntry cache_entry, Addr addr, State state) {
 //
 // Caller MUST gate on num_chiplets > 1 (e.g. via the call sites in
 // CHI-cache-actions.sm); chipletOf is not meaningful in single-chiplet mode.
+//
+// machineIDToNodeID() is a SLICC-callable helper declared in
+// RubySlicc_ComponentMapping.sm — the SLICC `external_type(MachineID)` itself
+// has no visible fields, so direct id.num doesn't compile.
 int chipletOf(MachineID id) {
-  if (id.num < num_chiplets) {
-    return id.num;
+  int n := machineIDToNodeID(id);
+  if (n < num_chiplets) {
+    return n;
   }
-  return (id.num - num_chiplets) / (cores_per_chiplet * 3);
+  return (n - num_chiplets) / (cores_per_chiplet * 3);
 }
 
 bool reqLocal(MachineID req) {
