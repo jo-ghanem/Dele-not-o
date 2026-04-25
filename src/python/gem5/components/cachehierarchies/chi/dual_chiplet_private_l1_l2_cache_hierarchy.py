@@ -134,10 +134,13 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         self.ruby_system.network.number_of_virtual_networks = 4
 
         # Per-chiplet HNs with addr-range interleaving.
+        # Build the list locally first; assigning self.directories only after the
+        # full list is constructed, so SimObject's __setattr__ sees one valid
+        # list assignment (it rejects an empty `[]` attached to an unknown
+        # param name).
         mem_ranges = board.get_mem_ports()  # list of (range, port)
-        # Use the first range as the source for splitting.
         mem_addr_ranges = [rng for rng, _ in mem_ranges]
-        self.directories = []
+        _dirs = []
         for chiplet_idx in range(self._num_chiplets):
             addr_ranges = SimpleDirectory.create_addr_ranges(
                 num_directories=self._num_chiplets,
@@ -158,7 +161,8 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
                 num_chiplets=self._num_chiplets,
             )
             hn.ruby_system = self.ruby_system
-            self.directories.append(hn)
+            _dirs.append(hn)
+        self.directories = _dirs
 
         # Core clusters; tag each one with its chiplet_id.
         self.core_clusters = [
