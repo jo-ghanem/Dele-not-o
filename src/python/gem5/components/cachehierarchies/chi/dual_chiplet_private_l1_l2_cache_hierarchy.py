@@ -162,6 +162,17 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
             )
             hn.ruby_system = self.ruby_system
             _dirs.append(hn)
+            # Stage A evidence: print HN addr-range bit math so the elaboration
+            # log can prove the address split is real.
+            for r in addr_ranges:
+                print(
+                    f"[ChipletEvidence] HN{chiplet_idx}.addr_range "
+                    f"intlvHighBit={r.intlvHighBit} "
+                    f"intlvBits={r.intlvBits} "
+                    f"intlvMatch={r.intlvMatch} "
+                    f"start={hex(int(r.start))} size={int(r.size())}",
+                    flush=True,
+                )
         self.directories = _dirs
 
         # Core clusters; tag each one with its chiplet_id.
