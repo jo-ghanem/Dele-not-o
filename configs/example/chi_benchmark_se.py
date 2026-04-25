@@ -81,6 +81,9 @@ parser.add_argument("--cores-per-chiplet", type=int, default=16,
 parser.add_argument("--inter-chiplet-link-latency", type=int, default=100,
     help="(chiplet topology only) cross-chiplet link latency in cycles "
          "(default 100 = 50 ns @ 2 GHz NoC, per chiplet.pdf §6.1)")
+parser.add_argument("--policy-type", type=int, default=1,
+    help="L1-side AMO policy: 0=All-Near, 1=Unique-Near (default), "
+         "2=Present-Near, 5=All-Central (Stage C — force every AMO to HN)")
 args = parser.parse_args()
 
 cpu_type_map = {
@@ -99,7 +102,7 @@ if args.topology == "chiplet":
         l2_assoc=8,
         hn_amo_policy=args.hn_amo_policy,
         atomic_op_latency=args.atomic_op_latency,
-        policy_type=1,
+        policy_type=args.policy_type,
         dynamo_enabled=args.dynamo_enabled,
         dynamo_threshold=args.dynamo_threshold,
         dynamo_variant=args.dynamo_variant,
@@ -119,7 +122,7 @@ else:
         l2_assoc=8,
         hn_amo_policy=args.hn_amo_policy,
         atomic_op_latency=args.atomic_op_latency,
-        policy_type=1,
+        policy_type=args.policy_type,
         dynamo_enabled=args.dynamo_enabled,
         dynamo_threshold=args.dynamo_threshold,
         dynamo_variant=args.dynamo_variant,

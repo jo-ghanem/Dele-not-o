@@ -865,6 +865,12 @@ action(Initiate_Atomic_UC, desc="") {
     if (delegato_enabled) {
       delegato_reuse_table.mark_reused(address);
     }
+  } else if (policy_type == 5) { // ALL CENTRAL — force far even on UC/UD
+    tbe.actions.push(Event:SendAtomicReturn);
+    tbe.actions.push(Event:SendARData);
+    tbe.dataToBeInvalid := true;
+    tbe.doCacheFill := false;
+    tbe.atomic_to_be_done := false;
   } else {
     error("Invalid policy type");
   }
@@ -954,7 +960,7 @@ action(Initiate_AtomicReturn_I, desc="") {
       tbe.actions.push(Event:WriteBEPipe);
       tbe.actions.push(Event:TagArrayWrite);
       tbe.atomic_to_be_done := true;
-  } else if ((policy_type == 1) || (policy_type == 2)) { // UNIQUE/PRESENT NEAR
+  } else if ((policy_type == 1) || (policy_type == 2) || (policy_type == 5)) { // UNIQUE/PRESENT NEAR or ALL-CENTRAL — force far
       tbe.actions.push(Event:SendAtomicReturn);
       tbe.actions.push(Event:SendARData);
       tbe.dataToBeInvalid := true;
@@ -1028,7 +1034,7 @@ action(Initiate_AtomicNoReturn_I, desc="") {
       tbe.actions.push(Event:WriteBEPipe);
       tbe.actions.push(Event:TagArrayWrite);
       tbe.atomic_to_be_done := true;
-  } else if ((policy_type == 1) || (policy_type == 2)) { // UNIQUE/PRESENT NEAR
+  } else if ((policy_type == 1) || (policy_type == 2) || (policy_type == 5)) { // UNIQUE/PRESENT NEAR or ALL-CENTRAL — force far
       tbe.actions.push(Event:SendAtomicNoReturn);
       tbe.actions.push(Event:SendANRData);
       tbe.dataToBeInvalid := true;
@@ -1095,7 +1101,7 @@ action(Initiate_AtomicReturn_SD, desc="") {
     tbe.actions.push(Event:WriteBEPipe);
     tbe.actions.push(Event:TagArrayWrite);
     tbe.atomic_to_be_done := true;
-  } else if (policy_type == 1) {
+  } else if ((policy_type == 1) || (policy_type == 5)) { // UNIQUE-NEAR or ALL-CENTRAL — far
     tbe.actions.push(Event:SendAtomicReturn);
     tbe.actions.push(Event:SendARData);
     tbe.dataToBeInvalid := true;
@@ -1161,7 +1167,7 @@ action(Initiate_AtomicNoReturn_SD, desc="") {
     tbe.actions.push(Event:WriteBEPipe);
     tbe.actions.push(Event:TagArrayWrite);
     tbe.atomic_to_be_done := true;
-  } else if (policy_type == 1) {
+  } else if ((policy_type == 1) || (policy_type == 5)) { // UNIQUE-NEAR or ALL-CENTRAL — far
     tbe.actions.push(Event:SendAtomicNoReturn);
     tbe.actions.push(Event:SendANRData);
     tbe.dataToBeInvalid := true;
@@ -1227,7 +1233,7 @@ action(Initiate_AtomicReturn_SC, desc="") {
     tbe.actions.push(Event:WriteBEPipe);
     tbe.actions.push(Event:TagArrayWrite);
     tbe.atomic_to_be_done := true;
-  } else if (policy_type == 1) {
+  } else if ((policy_type == 1) || (policy_type == 5)) { // UNIQUE-NEAR or ALL-CENTRAL — far
     tbe.actions.push(Event:SendAtomicReturn);
     tbe.actions.push(Event:SendARData);
     tbe.dataToBeInvalid := true;
@@ -1293,7 +1299,7 @@ action(Initiate_AtomicNoReturn_SC, desc="") {
     tbe.actions.push(Event:WriteBEPipe);
     tbe.actions.push(Event:TagArrayWrite);
     tbe.atomic_to_be_done := true;
-  } else if (policy_type == 1) {
+  } else if ((policy_type == 1) || (policy_type == 5)) { // UNIQUE-NEAR or ALL-CENTRAL — far
     tbe.actions.push(Event:SendAtomicNoReturn);
     tbe.actions.push(Event:SendANRData);
     tbe.dataToBeInvalid := true;
