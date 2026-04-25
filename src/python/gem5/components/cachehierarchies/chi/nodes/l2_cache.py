@@ -74,6 +74,9 @@ class L2CacheController(AbstractNode):
         cache_line_size,
         clk_domain: ClockDomain,
         atomic_op_latency: int = 4,
+        chiplet_id: int = 0,
+        cores_per_chiplet: int = 16,
+        num_chiplets: int = 1,
     ):
         super().__init__(network, cache_line_size)
 
@@ -88,6 +91,10 @@ class L2CacheController(AbstractNode):
         self.prefetcher = NULL
 
         self.atomic_op_latency = atomic_op_latency
+
+        self.chiplet_id = chiplet_id
+        self.cores_per_chiplet = cores_per_chiplet
+        self.num_chiplets = num_chiplets
 
         # Only applies to home nodes
         self.is_HN = False

@@ -22,6 +22,9 @@ from gem5.components.boards.simple_board import SimpleBoard
 from gem5.components.cachehierarchies.chi.private_l1_private_l2_cache_hierarchy import (
     PrivateL1PrivateL2CacheHierarchy,
 )
+from gem5.components.cachehierarchies.chi.dual_chiplet_private_l1_l2_cache_hierarchy import (
+    DualChipletPrivateL1PrivateL2CacheHierarchy,
+)
 from gem5.components.memory import SingleChannelDDR3_1600
 from gem5.components.processors.cpu_types import CPUTypes
 from gem5.components.processors.simple_processor import SimpleProcessor
@@ -65,6 +68,19 @@ parser.add_argument("--delegato-enabled", action="store_true",
     help="Enable Delegato HN-side predictor (chiplet.pdf §5.3)")
 parser.add_argument("--delegato-variant", type=int, default=0,
     help="0=FSM, 1=AlwaysDelegate, 2=AlwaysMigrate, 3=AlwaysCentralize")
+parser.add_argument("--atomic-op-latency", type=int, default=4,
+    help="Cycles for atomic ALU operation (0 = ALU-free ceiling for baseline F)")
+parser.add_argument("--topology", type=str, default="single",
+    choices=["single", "chiplet"],
+    help="single = stock single-HN (regression baseline); "
+         "chiplet = 2-HN dual-chiplet hierarchy with ChipletPt2Pt")
+parser.add_argument("--num-chiplets", type=int, default=2,
+    help="(chiplet topology only) number of chiplets")
+parser.add_argument("--cores-per-chiplet", type=int, default=16,
+    help="(chiplet topology only) cores per chiplet")
+parser.add_argument("--inter-chiplet-link-latency", type=int, default=100,
+    help="(chiplet topology only) cross-chiplet link latency in cycles "
+         "(default 100 = 50 ns @ 2 GHz NoC, per chiplet.pdf §6.1)")
 args = parser.parse_args()
 
 cpu_type_map = {
@@ -73,22 +89,43 @@ cpu_type_map = {
     "o3": CPUTypes.O3,
 }
 
-cache_hierarchy = PrivateL1PrivateL2CacheHierarchy(
-    l1i_size="32KiB",
-    l1i_assoc=4,
-    l1d_size=args.l1d_size,
-    l1d_assoc=4,
-    l2_size=args.l2_size,
-    l2_assoc=8,
-    hn_amo_policy=args.hn_amo_policy,
-    atomic_op_latency=4,
-    policy_type=1,
-    dynamo_enabled=args.dynamo_enabled,
-    dynamo_threshold=args.dynamo_threshold,
-    dynamo_variant=args.dynamo_variant,
-    delegato_enabled=args.delegato_enabled,
-    delegato_variant=args.delegato_variant,
-)
+if args.topology == "chiplet":
+    cache_hierarchy = DualChipletPrivateL1PrivateL2CacheHierarchy(
+        l1i_size="32KiB",
+        l1i_assoc=4,
+        l1d_size=args.l1d_size,
+        l1d_assoc=4,
+        l2_size=args.l2_size,
+        l2_assoc=8,
+        hn_amo_policy=args.hn_amo_policy,
+        atomic_op_latency=args.atomic_op_latency,
+        policy_type=1,
+        dynamo_enabled=args.dynamo_enabled,
+        dynamo_threshold=args.dynamo_threshold,
+        dynamo_variant=args.dynamo_variant,
+        delegato_enabled=args.delegato_enabled,
+        delegato_variant=args.delegato_variant,
+        num_chiplets=args.num_chiplets,
+        cores_per_chiplet=args.cores_per_chiplet,
+        inter_link_lat=args.inter_chiplet_link_latency,
+    )
+else:
+    cache_hierarchy = PrivateL1PrivateL2CacheHierarchy(
+        l1i_size="32KiB",
+        l1i_assoc=4,
+        l1d_size=args.l1d_size,
+        l1d_assoc=4,
+        l2_size=args.l2_size,
+        l2_assoc=8,
+        hn_amo_policy=args.hn_amo_policy,
+        atomic_op_latency=args.atomic_op_latency,
+        policy_type=1,
+        dynamo_enabled=args.dynamo_enabled,
+        dynamo_threshold=args.dynamo_threshold,
+        dynamo_variant=args.dynamo_variant,
+        delegato_enabled=args.delegato_enabled,
+        delegato_variant=args.delegato_variant,
+    )
 
 memory = SingleChannelDDR3_1600(size=args.mem_size)
 

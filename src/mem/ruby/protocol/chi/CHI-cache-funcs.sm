@@ -197,6 +197,41 @@ void setAccessPermission(CacheEntry cache_entry, Addr addr, State state) {
   }
 }
 
+// Stage 3 of wiggly-seeking-swing roadmap: chiplet helpers.
+//
+// CHI shares MachineType:Cache for L1D / L1I / L2 / HN, and AbstractNode
+// uses a single global _version counter (abstract_node.py:75-77). The
+// DualChipletPrivateL1PrivateL2CacheHierarchy creates controllers in this
+// fixed order:
+//   versions [0, num_chiplets)                    -> HNs (one per chiplet)
+//   versions [num_chiplets, num_chiplets + N*cpc*3) -> per-core caches in
+//                                                     groups of (dcache,
+//                                                     icache, l2) with
+//                                                     N=num_chiplets and
+//                                                     cpc=cores_per_chiplet
+//
+// The formula below recovers chiplet membership from a MachineID.num using
+// that ordering. It is FRAGILE: if anyone reorders controller creation or
+// changes the controllers-per-core count from 3, this breaks silently. The
+// elaboration-time hard assertion in DualChiplet._assert_chiplet_mapping
+// verifies the formula matches the explicit Python controller_to_chiplet map
+// before any sweep runs. If/when the assertion trips, the documented fix is
+// to replace the body with a true C++ extern keyed by MachineID (plan §8 D4
+// / Stage 2.5).
+//
+// Caller MUST gate on num_chiplets > 1 (e.g. via the call sites in
+// CHI-cache-actions.sm); chipletOf is not meaningful in single-chiplet mode.
+int chipletOf(MachineID id) {
+  if (id.num < num_chiplets) {
+    return id.num;
+  }
+  return (id.num - num_chiplets) / (cores_per_chiplet * 3);
+}
+
+bool reqLocal(MachineID req) {
+  return chipletOf(req) == chiplet_id;
+}
+
 void functionalRead(Addr addr, Packet *pkt, WriteMask &mask) {
   // read if bitmask has bytes not in mask or if data is dirty
 

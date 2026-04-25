@@ -106,6 +106,9 @@ class SimpleDirectory(BaseDirectory):
         hn_amo_policy: int = 0,
         delegato_enabled: bool = False,
         delegato_variant: int = 0,
+        chiplet_id: int = 0,
+        cores_per_chiplet: int = 16,
+        num_chiplets: int = 1,
     ):
         super().__init__(network, cache_line_size)
 
@@ -133,6 +136,11 @@ class SimpleDirectory(BaseDirectory):
         self.hn_amo_policy = hn_amo_policy
         self.delegato_enabled = delegato_enabled
         self.delegato_variant = delegato_variant
+
+        # Chiplet topology params (Stage 2 — wiggly-seeking-swing roadmap)
+        self.chiplet_id = chiplet_id
+        self.cores_per_chiplet = cores_per_chiplet
+        self.num_chiplets = num_chiplets
 
         # "Owned state"
         self.allow_SD = True

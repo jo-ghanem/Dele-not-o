@@ -165,6 +165,16 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   int delegato_rt_assoc := 2;
   int delegato_variant := 0;       // 0=FSM, 1=AlwaysDelegate, 2=AlwaysMigrate, 3=AlwaysCentralize
 
+  // Chiplet topology params (Stage 2 of wiggly-seeking-swing roadmap).
+  // chiplet_id is per-controller (set by Python from controller_to_chiplet
+  // map). cores_per_chiplet + num_chiplets are global system params used by
+  // chipletOf(MachineID) to resolve remote-controller chiplet membership.
+  // num_chiplets=1 (default) preserves the single-chiplet baseline; the
+  // chipletOf helper still works (always returns 0).
+  int chiplet_id := 0;
+  int cores_per_chiplet := 16;
+  int num_chiplets := 1;
+
   // Use separate Comp/DBIDResp responses for WriteUnique
   bool comp_wu := "False";
   // additional latency for the WU Comp response

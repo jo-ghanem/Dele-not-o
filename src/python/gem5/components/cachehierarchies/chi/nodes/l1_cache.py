@@ -59,6 +59,9 @@ class L1CacheController(AbstractNode):
         cache_line_size,
         target_isa: ISA,
         clk_domain: ClockDomain,
+        chiplet_id: int = 0,
+        cores_per_chiplet: int = 16,
+        num_chiplets: int = 1,
     ):
         super().__init__(network, cache_line_size)
 
@@ -70,6 +73,10 @@ class L1CacheController(AbstractNode):
         self.send_evictions = requires_send_evicts
         self.use_prefetcher = False
         self.prefetcher = NULL
+
+        self.chiplet_id = chiplet_id
+        self.cores_per_chiplet = cores_per_chiplet
+        self.num_chiplets = num_chiplets
 
         # Only applies to home nodes
         self.is_HN = False
