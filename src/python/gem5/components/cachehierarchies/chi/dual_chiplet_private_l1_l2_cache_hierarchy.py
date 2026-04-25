@@ -253,7 +253,9 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         the correct fix; the second assertion below will fail loudly so the
         next implementer knows to do that work before any chiplet sweep run.
         """
-        # First assertion: Python-side chiplet_id is consistent.
+        # First assertion: Python-side chiplet_id is consistent. Cast through int
+        # because SimObject param accessors return wrapper types that don't
+        # equate cleanly to raw Python ints (Param.Int(0) == 0 -> False).
         for i, cluster in enumerate(self.core_clusters):
             expected = i // self._cores_per_chiplet
             for tag, ctrl in (
@@ -261,15 +263,16 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
                 ("icache", cluster.icache),
                 ("l2", cluster.l2),
             ):
-                assert ctrl.chiplet_id == expected, (
+                got = int(ctrl.chiplet_id)
+                assert got == expected, (
                     f"chiplet mapping (Python) mismatch: "
-                    f"cluster[{i}].{tag}.chiplet_id={ctrl.chiplet_id}, "
-                    f"expected {expected}"
+                    f"cluster[{i}].{tag}.chiplet_id={got}, expected {expected}"
                 )
         for i, hn in enumerate(self.directories):
-            assert hn.chiplet_id == i, (
+            got = int(hn.chiplet_id)
+            assert got == i, (
                 f"chiplet mapping (Python) mismatch: "
-                f"directories[{i}].chiplet_id={hn.chiplet_id}, expected {i}"
+                f"directories[{i}].chiplet_id={got}, expected {i}"
             )
 
         # Second assertion: SLICC formula chipletOf matches the Python
