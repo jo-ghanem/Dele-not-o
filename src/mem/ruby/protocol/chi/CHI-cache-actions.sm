@@ -889,6 +889,12 @@ action(Initiate_Atomic_UD, desc="") {
     if (delegato_enabled) {
       delegato_reuse_table.mark_reused(address);
     }
+  } else if (policy_type == 5) { // ALL CENTRAL — force far even on UD
+    tbe.actions.push(Event:SendAtomicReturn);
+    tbe.actions.push(Event:SendARData);
+    tbe.dataToBeInvalid := true;
+    tbe.doCacheFill := false;
+    tbe.atomic_to_be_done := false;
   } else {
     error("Invalid policy type");
   }
