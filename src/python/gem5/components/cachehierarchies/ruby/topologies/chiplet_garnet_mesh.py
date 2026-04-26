@@ -231,58 +231,46 @@ class ChipletGarnetMesh(GarnetNetwork):
                         )
                         link_count += 1
 
-        # 6. Inter-chiplet bridge IntLinks: one fat link in each direction
-        # between bridge-router on chiplet 0 and bridge-router on chiplet 1.
-        # For >2 chiplets (M2 4-chiplet experiment), default to a ring:
-        # chiplet i bridges to chiplet (i+1) % num_chiplets. Plan §12.1
-        # documents the choice explicitly.
-        for i, cid in enumerate(chiplet_ids):
-            next_cid = chiplet_ids[(i + 1) % num_chiplets]
-            if cid == next_cid:
-                continue  # only happens if num_chiplets==1 (already asserted out)
-            br_a = chip_router(cid, self._bridge_router_idx)
-            br_b = chip_router(next_cid, self._bridge_router_idx)
+        # 6. Inter-chiplet bridge IntLinks. For each unordered chiplet pair
+        # (a, b) on the ring topology (chiplet i ↔ chiplet (i+1) % N), add
+        # both directions exactly once. This avoids the
+        # "Two links connecting same src and destination cannot support
+        # same vnets" fatal in Topology.cc:165 that bites if the same
+        # (src, dst) pair appears twice.
+        # - num_chiplets=2: ring degenerates to one bidirectional pair
+        #   (chip0 ↔ chip1) → 2 IntLinks total.
+        # - num_chiplets=N>=3: ring of N pairs → 2N IntLinks total.
+        bridge_pairs = set()
+        for i in range(num_chiplets):
+            a = chiplet_ids[i]
+            b = chiplet_ids[(i + 1) % num_chiplets]
+            if a == b:
+                continue
+            pair = tuple(sorted([a, b]))
+            if pair in bridge_pairs:
+                continue
+            bridge_pairs.add(pair)
+            br_a = chip_router(a, self._bridge_router_idx)
+            br_b = chip_router(b, self._bridge_router_idx)
             int_links.append(
                 GarnetIntLink(
                     link_id=link_count,
                     src_node=br_a,
                     dst_node=br_b,
-                    src_outport=f"Bridge_chip{cid}_to_chip{next_cid}",
-                    dst_inport=f"Bridge_chip{cid}_to_chip{next_cid}",
+                    src_outport=f"Bridge_chip{a}_to_chip{b}",
+                    dst_inport=f"Bridge_chip{a}_to_chip{b}",
                     latency=self._inter_link_lat,
                     weight=1,
                 )
             )
             link_count += 1
-            # Reverse direction is added when the loop visits (next_cid -> cid)
-            # for num_chiplets==2; for num_chiplets>=3 the ring direction is
-            # uni-directional in this loop, so we explicitly add the reverse:
-            if num_chiplets >= 3:
-                int_links.append(
-                    GarnetIntLink(
-                        link_id=link_count,
-                        src_node=br_b,
-                        dst_node=br_a,
-                        src_outport=f"Bridge_chip{next_cid}_to_chip{cid}",
-                        dst_inport=f"Bridge_chip{next_cid}_to_chip{cid}",
-                        latency=self._inter_link_lat,
-                        weight=1,
-                    )
-                )
-                link_count += 1
-
-        # For num_chiplets==2, the loop above adds one bridge (chip0->chip1);
-        # add the reverse explicitly so the link is bi-directional.
-        if num_chiplets == 2:
-            br_a = chip_router(chiplet_ids[1], self._bridge_router_idx)
-            br_b = chip_router(chiplet_ids[0], self._bridge_router_idx)
             int_links.append(
                 GarnetIntLink(
                     link_id=link_count,
-                    src_node=br_a,
-                    dst_node=br_b,
-                    src_outport=f"Bridge_chip{chiplet_ids[1]}_to_chip{chiplet_ids[0]}",
-                    dst_inport=f"Bridge_chip{chiplet_ids[1]}_to_chip{chiplet_ids[0]}",
+                    src_node=br_b,
+                    dst_node=br_a,
+                    src_outport=f"Bridge_chip{b}_to_chip{a}",
+                    dst_inport=f"Bridge_chip{b}_to_chip{a}",
                     latency=self._inter_link_lat,
                     weight=1,
                 )
