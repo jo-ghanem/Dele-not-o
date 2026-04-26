@@ -203,12 +203,13 @@ void setAccessPermission(CacheEntry cache_entry, Addr addr, State state) {
 // uses a single global _version counter (abstract_node.py:75-77). The
 // DualChipletPrivateL1PrivateL2CacheHierarchy creates controllers in this
 // fixed order:
-//   versions [0, num_chiplets)                    -> HNs (one per chiplet)
-//   versions [num_chiplets, num_chiplets + N*cpc*3) -> per-core caches in
-//                                                     groups of (dcache,
-//                                                     icache, l2) with
-//                                                     N=num_chiplets and
-//                                                     cpc=cores_per_chiplet
+//   versions [0, total_HNs)                          -> HNs (hns_per_chiplet
+//                                                       per chiplet)
+//   versions [total_HNs, total_HNs + N*cpc*3)        -> per-core caches in
+//                                                       groups of (dcache,
+//                                                       icache, l2)
+//   where total_HNs = num_chiplets * hns_per_chiplet
+//   and N = num_chiplets, cpc = cores_per_chiplet.
 //
 // The formula below recovers chiplet membership from a MachineID's NodeID
 // using that ordering. It is FRAGILE: if anyone reorders controller creation
@@ -228,10 +229,11 @@ void setAccessPermission(CacheEntry cache_entry, Addr addr, State state) {
 int chipletOf(MachineID id) {
   NodeID nid := machineIDToNodeID(id);
   int n := IDToInt(nid);
-  if (n < num_chiplets) {
-    return n;
+  int total_hns := num_chiplets * hns_per_chiplet;
+  if (n < total_hns) {
+    return n / hns_per_chiplet;
   }
-  return (n - num_chiplets) / (cores_per_chiplet * 3);
+  return (n - total_hns) / (cores_per_chiplet * 3);
 }
 
 bool reqLocal(MachineID req) {

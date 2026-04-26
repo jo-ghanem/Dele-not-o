@@ -94,6 +94,11 @@ parser.add_argument("--mesh-cols", type=int, default=6,
 parser.add_argument("--bridge-router-idx", type=int, default=0,
     help="(chiplet+garnet only) per-chiplet router index that hosts the "
          "inter-chiplet bridge IntLink (default 0 = top-left corner)")
+parser.add_argument("--hns-per-chiplet", type=int, default=1,
+    help="(chiplet topology only) HN/L3 slices per chiplet. Paper §6.1 / "
+         "Table 3 specifies 16 (= 32 total LLC slices for 2 chiplets). "
+         "Default 1 preserves the v1 mesh single-HN-per-chiplet baseline. "
+         "Must be a power of 2 (intlvBits requirement).")
 parser.add_argument("--policy-type", type=int, default=1,
     help="L1-side AMO policy: 0=All-Near, 1=Unique-Near (default), "
          "2=Present-Near, 5=All-Central (Stage C — force every AMO to HN)")
@@ -128,6 +133,7 @@ if args.topology == "chiplet":
         mesh_rows=args.mesh_rows,
         mesh_cols=args.mesh_cols,
         bridge_router_idx=args.bridge_router_idx,
+        hns_per_chiplet=args.hns_per_chiplet,
     )
 else:
     cache_hierarchy = PrivateL1PrivateL2CacheHierarchy(

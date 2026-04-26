@@ -176,6 +176,12 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   int chiplet_id := 0;
   int cores_per_chiplet := 16;
   int num_chiplets := 1;
+  // hns_per_chiplet: number of HN/L3 slices per chiplet. Paper §6.1 / Table 3
+  // specifies 16 (32 total LLC slices for 2 chiplets). Default 1 preserves the
+  // 1-HN-per-chiplet behavior used in the v1 mesh baseline. Used by chipletOf()
+  // in CHI-cache-funcs.sm to identify HN vs cache controllers and recover the
+  // correct chiplet for HN MachineIDs.
+  int hns_per_chiplet := 1;
 
   // Use separate Comp/DBIDResp responses for WriteUnique
   bool comp_wu := "False";

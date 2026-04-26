@@ -94,6 +94,7 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         mesh_rows: int = 4,
         mesh_cols: int = 6,
         bridge_router_idx: int = 0,
+        hns_per_chiplet: int = 1,
     ):
         super().__init__(
             l1i_size=l1i_size,
@@ -122,6 +123,13 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         self._mesh_rows = mesh_rows
         self._mesh_cols = mesh_cols
         self._bridge_router_idx = bridge_router_idx
+        assert hns_per_chiplet >= 1 and (
+            hns_per_chiplet & (hns_per_chiplet - 1) == 0
+        ), (
+            f"hns_per_chiplet must be a power of 2 (intlvBits requires it); "
+            f"got {hns_per_chiplet}"
+        )
+        self._hns_per_chiplet = hns_per_chiplet
 
     @overrides(AbstractCacheHierarchy)
     def incorporate_cache(self, board: AbstractBoard) -> None:
@@ -164,11 +172,17 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         # param name).
         mem_ranges = board.get_mem_ports()  # list of (range, port)
         mem_addr_ranges = [rng for rng, _ in mem_ranges]
+        total_hns = self._num_chiplets * self._hns_per_chiplet
+        assert total_hns >= 1 and (total_hns & (total_hns - 1) == 0), (
+            f"total HN count (num_chiplets * hns_per_chiplet) must be a power "
+            f"of 2 for create_addr_ranges intlv bits; got {total_hns}"
+        )
         _dirs = []
-        for chiplet_idx in range(self._num_chiplets):
+        for hn_idx in range(total_hns):
+            chiplet_idx = hn_idx // self._hns_per_chiplet
             addr_ranges = SimpleDirectory.create_addr_ranges(
-                num_directories=self._num_chiplets,
-                dir_idx=chiplet_idx,
+                num_directories=total_hns,
+                dir_idx=hn_idx,
                 mem_ranges=mem_addr_ranges,
                 cache_line_size=board.get_cache_line_size(),
             )
@@ -184,6 +198,9 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
                 cores_per_chiplet=self._cores_per_chiplet,
                 num_chiplets=self._num_chiplets,
             )
+            # hns_per_chiplet is a SLICC machine param exposed automatically;
+            # set it via the SimObject param interface so chipletOf can use it.
+            hn.hns_per_chiplet = self._hns_per_chiplet
             hn.ruby_system = self.ruby_system
             _dirs.append(hn)
             # Stage A evidence: print each HN's addr_ranges at elaboration so the
@@ -191,7 +208,7 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
             # already carries intlvHighBit / intlvBits / intlvMatch info.
             for r in addr_ranges:
                 print(
-                    f"[ChipletEvidence] HN{chiplet_idx}.addr_range = {r}",
+                    f"[ChipletEvidence] HN{hn_idx}(chiplet={chiplet_idx}).addr_range = {r}",
                     flush=True,
                 )
         self.directories = _dirs
@@ -231,7 +248,7 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
             controller_to_chiplet[cluster.icache] = chiplet
             controller_to_chiplet[cluster.l2] = chiplet
         for i, hn in enumerate(self.directories):
-            controller_to_chiplet[hn] = i
+            controller_to_chiplet[hn] = i // self._hns_per_chiplet
         for mc in self.memory_controllers:
             controller_to_chiplet[mc] = 0
         if board.has_dma_ports():
@@ -302,25 +319,29 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
                 )
         for i, hn in enumerate(self.directories):
             got = int(hn.chiplet_id)
-            assert got == i, (
+            expected_hn = i // self._hns_per_chiplet
+            assert got == expected_hn, (
                 f"chiplet mapping (Python) mismatch: "
-                f"directories[{i}].chiplet_id={got}, expected {i}"
+                f"directories[{i}].chiplet_id={got}, expected {expected_hn}"
             )
 
         # Second assertion: SLICC formula chipletOf matches the Python
         # controller_to_chiplet map. The SLICC formula is:
-        #   if id.num < num_chiplets: return id.num
-        #   else: return (id.num - num_chiplets) / (cores_per_chiplet * 3)
+        #   total_hns := num_chiplets * hns_per_chiplet
+        #   if id.num < total_hns: return id.num / hns_per_chiplet
+        #   else: return (id.num - total_hns) / (cores_per_chiplet * 3)
         # This is fragile (depends on the controller-creation order in
         # incorporate_cache); if it fails, replace chipletOf body with a C++
         # extern keyed by MachineID (plan §8 D4 / Stage 2.5).
         cpc = self._cores_per_chiplet
         nc = self._num_chiplets
+        hpc = self._hns_per_chiplet
+        total_hns = nc * hpc
 
         def slicc_chiplet_of(version):
-            if version < nc:
-                return version
-            return (version - nc) // (cpc * 3)
+            if version < total_hns:
+                return version // hpc
+            return (version - total_hns) // (cpc * 3)
 
         slicc_failures = []
         for i, cluster in enumerate(self.core_clusters):
@@ -340,10 +361,11 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         for i, hn in enumerate(self.directories):
             ver = int(hn.version)
             got = slicc_chiplet_of(ver)
-            if got != i:
+            expected_hn = i // hpc
+            if got != expected_hn:
                 slicc_failures.append(
                     f"directories[{i}]: version={ver}, "
-                    f"slicc_chipletOf={got}, expected={i}"
+                    f"slicc_chipletOf={got}, expected={expected_hn}"
                 )
         if slicc_failures:
             msg = (
