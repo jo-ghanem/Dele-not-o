@@ -32,7 +32,9 @@ from m5.objects import (
     GarnetExtLink,
     GarnetIntLink,
     GarnetNetwork,
+    GarnetNetworkInterface,
     GarnetRouter,
+    NetworkBridge,
 )
 
 
@@ -289,7 +291,91 @@ class ChipletGarnetMesh(GarnetNetwork):
 
         self.int_links = int_links
 
-        # 7. Topology evidence printouts (Stage A-style; written into
+        # 7. NetworkInterface per ExtLink + NetworkBridge wiring on every link.
+        # Required for Garnet init() — without these the C++ side segfaults in
+        # GarnetNetwork::init(). Pattern lifted from configs/network/Network.py
+        # (legacy Garnet flow, lines 168-279). Bridges handle CDC + SerDes for
+        # heterogeneous-width networks (HeteroGarnet feature); for our v1 the
+        # widths are uniform (default ni_flit_size=16 B everywhere) so the
+        # bridges are pass-through but still mandatory.
+        self.netifs = [
+            GarnetNetworkInterface(id=i)
+            for i in range(len(self.ext_links))
+        ]
+
+        for il in self.int_links:
+            il.src_net_bridge = NetworkBridge(
+                link=il.network_link,
+                vtype="OBJECT_LINK",
+                width=il.src_node.width,
+            )
+            il.src_cred_bridge = NetworkBridge(
+                link=il.credit_link,
+                vtype="LINK_OBJECT",
+                width=il.src_node.width,
+            )
+            il.dst_net_bridge = NetworkBridge(
+                link=il.network_link,
+                vtype="LINK_OBJECT",
+                width=il.dst_node.width,
+            )
+            il.dst_cred_bridge = NetworkBridge(
+                link=il.credit_link,
+                vtype="OBJECT_LINK",
+                width=il.dst_node.width,
+            )
+
+        for el in self.ext_links:
+            el.ext_net_bridge = [
+                NetworkBridge(
+                    link=el.network_links[0],
+                    vtype="OBJECT_LINK",
+                    width=el.width,
+                ),
+                NetworkBridge(
+                    link=el.network_links[1],
+                    vtype="LINK_OBJECT",
+                    width=el.width,
+                ),
+            ]
+            el.ext_cred_bridge = [
+                NetworkBridge(
+                    link=el.credit_links[0],
+                    vtype="LINK_OBJECT",
+                    width=el.width,
+                ),
+                NetworkBridge(
+                    link=el.credit_links[1],
+                    vtype="OBJECT_LINK",
+                    width=el.width,
+                ),
+            ]
+            el.int_net_bridge = [
+                NetworkBridge(
+                    link=el.network_links[0],
+                    vtype="LINK_OBJECT",
+                    width=el.int_node.width,
+                ),
+                NetworkBridge(
+                    link=el.network_links[1],
+                    vtype="OBJECT_LINK",
+                    width=el.int_node.width,
+                ),
+            ]
+            el.int_cred_bridge = [
+                NetworkBridge(
+                    link=el.credit_links[0],
+                    vtype="OBJECT_LINK",
+                    width=el.int_node.width,
+                ),
+                NetworkBridge(
+                    link=el.credit_links[1],
+                    vtype="LINK_OBJECT",
+                    width=el.int_node.width,
+                ),
+            ]
+
+        # 8. Topology evidence printouts (Stage A-style; written into
         # GARNET_TOPOLOGY_EVIDENCE.md by the harness on first elaboration).
         print(
             f"[GarnetMeshEvidence] num_chiplets={num_chiplets} "
