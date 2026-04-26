@@ -225,6 +225,8 @@ PySource('gem5.components.cachehierarchies.ruby.topologies',
     'gem5/components/cachehierarchies/ruby/topologies/simple_pt2pt.py')
 PySource('gem5.components.cachehierarchies.ruby.topologies',
     'gem5/components/cachehierarchies/ruby/topologies/chiplet_pt2pt.py')
+PySource('gem5.components.cachehierarchies.ruby.topologies',
+    'gem5/components/cachehierarchies/ruby/topologies/chiplet_garnet_mesh.py')
 
 PySource('gem5.components.devices',
     'gem5/components/devices/__init__.py')

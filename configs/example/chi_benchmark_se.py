@@ -81,6 +81,19 @@ parser.add_argument("--cores-per-chiplet", type=int, default=16,
 parser.add_argument("--inter-chiplet-link-latency", type=int, default=100,
     help="(chiplet topology only) cross-chiplet link latency in cycles "
          "(default 100 = 50 ns @ 2 GHz NoC, per chiplet.pdf §6.1)")
+parser.add_argument("--network", type=str, default="simple",
+    choices=["simple", "garnet"],
+    help="(chiplet topology only) network model: simple = ChipletPt2Pt "
+         "single-edge approximation (default); garnet = ChipletGarnetMesh "
+         "paper-faithful HeteroGarnet 2D mesh per chiplet (latency-faithful, "
+         "bandwidth simplified per GARNET_TOPOLOGY_EVIDENCE.md §2a)")
+parser.add_argument("--mesh-rows", type=int, default=4,
+    help="(chiplet+garnet only) per-chiplet mesh row count (default 4)")
+parser.add_argument("--mesh-cols", type=int, default=6,
+    help="(chiplet+garnet only) per-chiplet mesh column count (default 6)")
+parser.add_argument("--bridge-router-idx", type=int, default=0,
+    help="(chiplet+garnet only) per-chiplet router index that hosts the "
+         "inter-chiplet bridge IntLink (default 0 = top-left corner)")
 parser.add_argument("--policy-type", type=int, default=1,
     help="L1-side AMO policy: 0=All-Near, 1=Unique-Near (default), "
          "2=Present-Near, 5=All-Central (Stage C — force every AMO to HN)")
@@ -111,6 +124,10 @@ if args.topology == "chiplet":
         num_chiplets=args.num_chiplets,
         cores_per_chiplet=args.cores_per_chiplet,
         inter_link_lat=args.inter_chiplet_link_latency,
+        network=args.network,
+        mesh_rows=args.mesh_rows,
+        mesh_cols=args.mesh_cols,
+        bridge_router_idx=args.bridge_router_idx,
     )
 else:
     cache_hierarchy = PrivateL1PrivateL2CacheHierarchy(

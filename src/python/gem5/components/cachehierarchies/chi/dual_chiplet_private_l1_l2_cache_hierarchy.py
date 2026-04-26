@@ -42,6 +42,9 @@ from gem5.components.cachehierarchies.abstract_cache_hierarchy import (
 from gem5.components.cachehierarchies.ruby.topologies.chiplet_pt2pt import (
     ChipletPt2Pt,
 )
+from gem5.components.cachehierarchies.ruby.topologies.chiplet_garnet_mesh import (
+    ChipletGarnetMesh,
+)
 from gem5.components.processors.abstract_core import AbstractCore
 from gem5.isas import ISA
 from gem5.utils.override import overrides
@@ -87,6 +90,10 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         cores_per_chiplet: int = 16,
         intra_link_lat: int = 1,
         inter_link_lat: int = 100,
+        network: str = "simple",
+        mesh_rows: int = 4,
+        mesh_cols: int = 6,
+        bridge_router_idx: int = 0,
     ):
         super().__init__(
             l1i_size=l1i_size,
@@ -108,6 +115,13 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         self._cores_per_chiplet = cores_per_chiplet
         self._intra_link_lat = intra_link_lat
         self._inter_link_lat = inter_link_lat
+        assert network in ("simple", "garnet"), (
+            f"network must be 'simple' or 'garnet', got {network!r}"
+        )
+        self._network = network
+        self._mesh_rows = mesh_rows
+        self._mesh_cols = mesh_cols
+        self._bridge_router_idx = bridge_router_idx
 
     @overrides(AbstractCacheHierarchy)
     def incorporate_cache(self, board: AbstractBoard) -> None:
@@ -125,11 +139,21 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         )
 
         self.ruby_system = RubySystem()
-        self.ruby_system.network = ChipletPt2Pt(
-            self.ruby_system,
-            intra_link_lat=self._intra_link_lat,
-            inter_link_lat=self._inter_link_lat,
-        )
+        if self._network == "garnet":
+            self.ruby_system.network = ChipletGarnetMesh(
+                self.ruby_system,
+                mesh_rows=self._mesh_rows,
+                mesh_cols=self._mesh_cols,
+                intra_link_lat=self._intra_link_lat,
+                inter_link_lat=self._inter_link_lat,
+                bridge_router_idx=self._bridge_router_idx,
+            )
+        else:
+            self.ruby_system.network = ChipletPt2Pt(
+                self.ruby_system,
+                intra_link_lat=self._intra_link_lat,
+                inter_link_lat=self._inter_link_lat,
+            )
         self.ruby_system.number_of_virtual_networks = 4
         self.ruby_system.network.number_of_virtual_networks = 4
 
