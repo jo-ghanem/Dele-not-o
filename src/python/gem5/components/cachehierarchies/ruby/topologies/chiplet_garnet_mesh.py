@@ -308,3 +308,16 @@ class ChipletGarnetMesh(GarnetNetwork):
                 f"distributed across routers [{cid * R} .. {cid * R + R - 1}]",
                 flush=True,
             )
+
+    def setup_buffers(self):
+        """No-op for Garnet networks.
+
+        SimpleNetwork hierarchies require per-link buffer setup
+        (SimpleNetwork.py:73-78); Garnet routers and links manage their
+        buffers internally via VC counts (vcs_per_vnet, buffers_per_data_vc,
+        buffers_per_ctrl_vc on GarnetNetwork). The stdlib hierarchy calls
+        setup_buffers() unconditionally after connectControllers(), so we
+        provide this no-op to keep that call site working without a network-
+        type branch in the hierarchy.
+        """
+        pass
