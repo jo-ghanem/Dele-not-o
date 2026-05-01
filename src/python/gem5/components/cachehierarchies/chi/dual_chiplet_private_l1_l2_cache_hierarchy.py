@@ -92,7 +92,7 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         inter_link_lat: int = 100,
         network: str = "simple",
         mesh_rows: int = 4,
-        mesh_cols: int = 6,
+        mesh_cols: int = 4,
         bridge_router_idx: int = 0,
         hns_per_chiplet: int = 1,
         # S3: Real LLC at each HN slice. None = legacy snoop-filter-only HN.

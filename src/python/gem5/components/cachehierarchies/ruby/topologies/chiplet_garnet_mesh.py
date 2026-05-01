@@ -51,7 +51,7 @@ class ChipletGarnetMesh(GarnetNetwork):
         self,
         ruby_system,
         mesh_rows: int = 4,
-        mesh_cols: int = 6,
+        mesh_cols: int = 4,
         intra_link_lat: int = 1,
         inter_link_lat: int = 100,
         bridge_router_idx: int = 0,

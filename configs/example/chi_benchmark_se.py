@@ -103,8 +103,10 @@ parser.add_argument("--network", type=str, default="simple",
          "bandwidth simplified per GARNET_TOPOLOGY_EVIDENCE.md §2a)")
 parser.add_argument("--mesh-rows", type=int, default=4,
     help="(chiplet+garnet only) per-chiplet mesh row count (default 4)")
-parser.add_argument("--mesh-cols", type=int, default=6,
-    help="(chiplet+garnet only) per-chiplet mesh column count (default 6)")
+parser.add_argument("--mesh-cols", type=int, default=4,
+    help="(chiplet+garnet only) per-chiplet mesh column count "
+         "(default 4 = paper-faithful 4×4 per chiplet, system view 8×4 "
+         "after S9 bisection bridges; chiplet.pdf author errata)")
 parser.add_argument("--bridge-router-idx", type=int, default=0,
     help="(chiplet+garnet only) per-chiplet router index that hosts the "
          "inter-chiplet bridge IntLink (default 0 = top-left corner)")
