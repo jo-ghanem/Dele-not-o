@@ -143,6 +143,16 @@ parser.add_argument("--l3-data-latency", type=int, default=12,
          "Paper Table 3: 12.")
 parser.add_argument("--l3-tag-latency", type=int, default=2,
     help="(chiplet topology only) L3 tag access latency in cycles. Default 2.")
+# S10: split CPU vs NoC clock domains. Paper §6.1 Table 3 has CPU @ 3 GHz
+# and NoC+LLC @ 2 GHz. We pass cpu_clk_freq to SimpleBoard (which becomes
+# the default clk_domain for cores/L1/L2/sequencers) and noc_clk_freq to
+# the cache hierarchy so it can build a separate SrcClockDomain attached
+# to HN/L3/Garnet network/memory controllers.
+parser.add_argument("--cpu-clk-freq", type=str, default="3GHz",
+    help="CPU clock domain (paper Table 3: 3 GHz). Applied to L1/L2/cores.")
+parser.add_argument("--noc-clk-freq", type=str, default="2GHz",
+    help="NoC + LLC clock domain (paper Table 3: 2 GHz). Applied to "
+         "HN/L3/Garnet network/memory controllers.")
 args = parser.parse_args()
 
 cpu_type_map = {
@@ -179,6 +189,7 @@ if args.topology == "chiplet":
         l3_assoc=args.l3_assoc,
         l3_data_latency=args.l3_data_latency,
         l3_tag_latency=args.l3_tag_latency,
+        noc_clk_freq=args.noc_clk_freq,
     )
 else:
     cache_hierarchy = PrivateL1PrivateL2CacheHierarchy(
@@ -238,10 +249,15 @@ if args.cpu_type == "o3":
     )
 
 board = SimpleBoard(
-    clk_freq="2GHz",
+    clk_freq=args.cpu_clk_freq,
     processor=processor,
     memory=memory,
     cache_hierarchy=cache_hierarchy,
+)
+print(
+    f"[ClockEvidence] cpu_clk={args.cpu_clk_freq} "
+    f"noc_clk={args.noc_clk_freq}",
+    flush=True,
 )
 
 binary_resource = BinaryResource(local_path=args.binary)

@@ -27,6 +27,7 @@ from m5.objects import (
     RubyPortProxy,
     RubySequencer,
     RubySystem,
+    SrcClockDomain,
 )
 from m5.objects.SubSystem import SubSystem
 
@@ -102,6 +103,12 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         l3_assoc: int = 16,
         l3_data_latency: int = 12,
         l3_tag_latency: int = 2,
+        # S10: separate NoC + LLC clock domain. None = legacy single-domain
+        # (everything inherits board.clk_domain). Set to e.g. "2GHz" to
+        # build a separate SrcClockDomain shared with the board's
+        # voltage_domain and apply it to HN, network, and memory controllers
+        # while L1/L2/sequencers stay on the board's CPU clock.
+        noc_clk_freq: str = None,
     ):
         super().__init__(
             l1i_size=l1i_size,
@@ -141,6 +148,7 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         self._l3_assoc = l3_assoc
         self._l3_data_latency = l3_data_latency
         self._l3_tag_latency = l3_tag_latency
+        self._noc_clk_freq = noc_clk_freq
 
     @overrides(AbstractCacheHierarchy)
     def incorporate_cache(self, board: AbstractBoard) -> None:
@@ -158,6 +166,21 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         )
 
         self.ruby_system = RubySystem()
+
+        # S10: build separate NoC clock domain when requested. The board's
+        # clk_domain remains the CPU clock (board.clk_freq from
+        # chi_benchmark_se.py); this NoC domain is shared with the same
+        # voltage_domain and applied to HN, network, memory controllers.
+        # L1/L2/sequencers continue to use board.get_clock_domain() (CPU).
+        if self._noc_clk_freq is not None:
+            self.noc_clk_domain = SrcClockDomain(
+                clock=self._noc_clk_freq,
+                voltage_domain=board.get_clock_domain().voltage_domain,
+            )
+            _hn_clk_domain = self.noc_clk_domain
+        else:
+            _hn_clk_domain = board.get_clock_domain()
+
         if self._network == "garnet":
             self.ruby_system.network = ChipletGarnetMesh(
                 self.ruby_system,
@@ -167,6 +190,8 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
                 inter_link_lat=self._inter_link_lat,
                 bridge_router_idx=self._bridge_router_idx,
             )
+            if self._noc_clk_freq is not None:
+                self.ruby_system.network.clk_domain = self.noc_clk_domain
         else:
             self.ruby_system.network = ChipletPt2Pt(
                 self.ruby_system,
@@ -212,7 +237,7 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
             hn = SimpleDirectory(
                 self.ruby_system.network,
                 cache_line_size=board.get_cache_line_size(),
-                clk_domain=board.get_clock_domain(),
+                clk_domain=_hn_clk_domain,
                 addr_ranges=addr_ranges,
                 hn_amo_policy=self._hn_amo_policy,
                 delegato_enabled=self._delegato_enabled,
@@ -254,6 +279,10 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         # Memory controllers (off-chiplet in reality; modeled as chiplet 0
         # because every chiplet still routes through the same memory side).
         self.memory_controllers = self._create_memory_controllers(board)
+        # S10: memory controllers run on the NoC clock when split.
+        if self._noc_clk_freq is not None:
+            for mc in self.memory_controllers:
+                mc.clk_domain = self.noc_clk_domain
         for hn in self.directories:
             hn.downstream_destinations = self.memory_controllers
 
