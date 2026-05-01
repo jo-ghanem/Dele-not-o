@@ -268,51 +268,90 @@ class ChipletGarnetMesh(GarnetNetwork):
                         )
                         link_count += 1
 
-        # 6. Inter-chiplet bridge IntLinks. For each unordered chiplet pair
-        # (a, b) on the ring topology (chiplet i ↔ chiplet (i+1) % N), add
-        # both directions exactly once. This avoids the
-        # "Two links connecting same src and destination cannot support
-        # same vnets" fatal in Topology.cc:165 that bites if the same
-        # (src, dst) pair appears twice.
-        # - num_chiplets=2: ring degenerates to one bidirectional pair
-        #   (chip0 ↔ chip1) → 2 IntLinks total.
-        # - num_chiplets=N>=3: ring of N pairs → 2N IntLinks total.
-        bridge_pairs = set()
-        for i in range(num_chiplets):
-            a = chiplet_ids[i]
-            b = chiplet_ids[(i + 1) % num_chiplets]
-            if a == b:
-                continue
-            pair = tuple(sorted([a, b]))
-            if pair in bridge_pairs:
-                continue
-            bridge_pairs.add(pair)
-            br_a = chip_router(a, self._bridge_router_idx)
-            br_b = chip_router(b, self._bridge_router_idx)
-            int_links.append(
-                GarnetIntLink(
-                    link_id=link_count,
-                    src_node=br_a,
-                    dst_node=br_b,
-                    src_outport=f"Bridge_chip{a}_to_chip{b}",
-                    dst_inport=f"Bridge_chip{a}_to_chip{b}",
-                    latency=self._inter_link_lat,
-                    weight=1,
+        # 6. S9: Inter-chiplet bridge IntLinks at the bisection.
+        # Per author A4 confirmation, two 4×4 chiplet meshes are joined at
+        # their column-boundary by ONE bridge per row — i.e., for the
+        # 2-chiplet case: mesh_rows links each connecting (row r, last col
+        # of chip 0) to (row r, first col of chip 1), bidirectional.
+        # For num_chiplets > 2, fall back to the legacy single-bridge ring
+        # (M2 layout). Each bridge gets latency=inter_link_lat (paper 50 ns
+        # @ 2 GHz NoC = 100 cyc).
+        #
+        # Total inter-chiplet IntLinks for 2 chiplets:
+        #   2 directions × mesh_rows rows = 2*mesh_rows.
+        # Each row's pair (src_outport, dst_inport) is uniquely named so
+        # Topology.cc:165 ("Two links connecting same src and destination
+        # cannot support same vnets") cannot trigger.
+        if num_chiplets == 2:
+            a, b = chiplet_ids[0], chiplet_ids[1]
+            for r in range(self._mesh_rows):
+                a_router_idx = r * self._mesh_cols + (self._mesh_cols - 1)
+                b_router_idx = r * self._mesh_cols + 0
+                br_a = chip_router(a, a_router_idx)
+                br_b = chip_router(b, b_router_idx)
+                int_links.append(
+                    GarnetIntLink(
+                        link_id=link_count,
+                        src_node=br_a,
+                        dst_node=br_b,
+                        src_outport=f"Bisect_chip{a}_row{r}",
+                        dst_inport=f"Bisect_chip{a}_row{r}",
+                        latency=self._inter_link_lat,
+                        weight=1,
+                    )
                 )
-            )
-            link_count += 1
-            int_links.append(
-                GarnetIntLink(
-                    link_id=link_count,
-                    src_node=br_b,
-                    dst_node=br_a,
-                    src_outport=f"Bridge_chip{b}_to_chip{a}",
-                    dst_inport=f"Bridge_chip{b}_to_chip{a}",
-                    latency=self._inter_link_lat,
-                    weight=1,
+                link_count += 1
+                int_links.append(
+                    GarnetIntLink(
+                        link_id=link_count,
+                        src_node=br_b,
+                        dst_node=br_a,
+                        src_outport=f"Bisect_chip{b}_row{r}",
+                        dst_inport=f"Bisect_chip{b}_row{r}",
+                        latency=self._inter_link_lat,
+                        weight=1,
+                    )
                 )
-            )
-            link_count += 1
+                link_count += 1
+        else:
+            # Legacy ring topology for >2 chiplets (M2 4-chiplet layout).
+            # One bridge per neighboring chiplet pair via bridge_router_idx.
+            bridge_pairs = set()
+            for i in range(num_chiplets):
+                a = chiplet_ids[i]
+                b = chiplet_ids[(i + 1) % num_chiplets]
+                if a == b:
+                    continue
+                pair = tuple(sorted([a, b]))
+                if pair in bridge_pairs:
+                    continue
+                bridge_pairs.add(pair)
+                br_a = chip_router(a, self._bridge_router_idx)
+                br_b = chip_router(b, self._bridge_router_idx)
+                int_links.append(
+                    GarnetIntLink(
+                        link_id=link_count,
+                        src_node=br_a,
+                        dst_node=br_b,
+                        src_outport=f"Bridge_chip{a}_to_chip{b}",
+                        dst_inport=f"Bridge_chip{a}_to_chip{b}",
+                        latency=self._inter_link_lat,
+                        weight=1,
+                    )
+                )
+                link_count += 1
+                int_links.append(
+                    GarnetIntLink(
+                        link_id=link_count,
+                        src_node=br_b,
+                        dst_node=br_a,
+                        src_outport=f"Bridge_chip{b}_to_chip{a}",
+                        dst_inport=f"Bridge_chip{b}_to_chip{a}",
+                        latency=self._inter_link_lat,
+                        weight=1,
+                    )
+                )
+                link_count += 1
 
         self.int_links = int_links
 
@@ -402,6 +441,13 @@ class ChipletGarnetMesh(GarnetNetwork):
 
         # 8. Topology evidence printouts (Stage A-style; written into
         # GARNET_TOPOLOGY_EVIDENCE.md by the harness on first elaboration).
+        if num_chiplets == 2:
+            bridge_topology = (
+                f"bisection ({self._mesh_rows} pairs × 2 dir = "
+                f"{2 * self._mesh_rows} IntLinks)"
+            )
+        else:
+            bridge_topology = "ring (1 pair per neighbor × 2 dir)"
         print(
             f"[GarnetMeshEvidence] num_chiplets={num_chiplets} "
             f"mesh_rows={self._mesh_rows} mesh_cols={self._mesh_cols} "
@@ -409,9 +455,21 @@ class ChipletGarnetMesh(GarnetNetwork):
             f"ext_links={len(self.ext_links)} int_links={len(self.int_links)} "
             f"intra_link_lat={self._intra_link_lat} "
             f"inter_link_lat={self._inter_link_lat} "
-            f"bridge_router_idx={self._bridge_router_idx}",
+            f"bridge_topology={bridge_topology}",
             flush=True,
         )
+        if num_chiplets == 2:
+            for r in range(self._mesh_rows):
+                a_idx = r * self._mesh_cols + (self._mesh_cols - 1)
+                b_idx = r * self._mesh_cols + 0
+                a_router = chiplet_ids[0] * R + a_idx
+                b_router = chiplet_ids[1] * R + b_idx
+                print(
+                    f"[GarnetMeshEvidence] bisection row={r}: "
+                    f"router{a_router} <-> router{b_router} "
+                    f"latency={self._inter_link_lat}cy",
+                    flush=True,
+                )
         for cid in chiplet_ids:
             ctrl_count = len(per_chiplet_ctrls[cid])
             mode = "tile-coupled" if controller_to_router_idx else "divmod"
