@@ -26,6 +26,8 @@ from gem5.components.cachehierarchies.chi.dual_chiplet_private_l1_l2_cache_hiera
     DualChipletPrivateL1PrivateL2CacheHierarchy,
 )
 from gem5.components.memory import SingleChannelDDR3_1600
+from gem5.components.memory.memory import ChanneledMemory
+from m5.objects import DDR5_8400_4x8
 from gem5.components.processors.cpu_types import CPUTypes
 from gem5.components.processors.simple_processor import SimpleProcessor
 from gem5.isas import ISA
@@ -75,7 +77,13 @@ parser.add_argument("--l1i-size", type=str, default="64KiB",
     help="Private L1I size per core (paper Table 3: 64 KiB, 4-way, 3-cyc).")
 parser.add_argument("--l2-size", type=str, default="1MiB",
     help="Private L2 size per core (paper Table 3: 1MiB, 8-way, 8-cyc).")
-parser.add_argument("--mem-size", type=str, default="512MiB")
+parser.add_argument("--mem-size", type=str, default="8GiB",
+    help="Total physical memory (paper Table 3: 8 GiB).")
+parser.add_argument("--mem-type", type=str, default="ddr5_8ch",
+    choices=["ddr5_8ch", "ddr3_1ch"],
+    help="Memory model. ddr5_8ch (default) = 8-channel DDR5_8400 per "
+         "chiplet.pdf §6.1 Table 3 (~248 GB/s aggregate). ddr3_1ch = "
+         "single-channel DDR3-1600 (legacy regression baseline).")
 parser.add_argument("--dynamo-enabled", action="store_true",
     help="Enable DynAMO-Reuse L1 predictor (dynamo.pdf ISCA'23 §5)")
 parser.add_argument("--dynamo-threshold", type=int, default=1,
@@ -190,7 +198,18 @@ else:
         delegato_variant=args.delegato_variant,
     )
 
-memory = SingleChannelDDR3_1600(size=args.mem_size)
+# S8: paper-faithful 8-channel DDR5 (chiplet.pdf §6.1 Table 3 — paper text
+# "DDR8" is a typo for DDR5 per author confirmation). 64-byte interleave
+# matches the cache line size and the existing SingleChannel*/DualChannel*
+# helpers in gem5/components/memory/. ddr3_1ch path preserves the legacy
+# regression baseline.
+if args.mem_type == "ddr5_8ch":
+    memory = ChanneledMemory(DDR5_8400_4x8, 8, 64, size=args.mem_size)
+elif args.mem_type == "ddr3_1ch":
+    memory = SingleChannelDDR3_1600(size=args.mem_size)
+else:
+    raise ValueError(f"unknown --mem-type {args.mem_type!r}")
+print(f"[MemoryEvidence] mem_type={args.mem_type} size={args.mem_size}", flush=True)
 
 processor = SimpleProcessor(
     cpu_type=cpu_type_map[args.cpu_type],
