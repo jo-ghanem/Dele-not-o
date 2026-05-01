@@ -65,8 +65,14 @@ class L1CacheController(AbstractNode):
     ):
         super().__init__(network, cache_line_size)
 
+        # S7: paper Table 3 = 3-cycle L1 access. Split as
+        # tagAccessLatency=1 + dataAccessLatency=2 = 3 cyc total.
         self.cache = RubyCache(
-            size=size, assoc=assoc, start_index_bit=self.getBlockSizeBits()
+            size=size,
+            assoc=assoc,
+            start_index_bit=self.getBlockSizeBits(),
+            dataAccessLatency=2,
+            tagAccessLatency=1,
         )
 
         self.clk_domain = clk_domain

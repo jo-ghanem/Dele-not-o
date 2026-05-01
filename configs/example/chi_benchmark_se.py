@@ -69,7 +69,10 @@ parser.add_argument("--cpu-fetch-width", type=int, default=8,
     help="(o3 only) Fetch / decode / commit width (paper Table 3: 8)")
 parser.add_argument("--cpu-issue-width", type=int, default=13,
     help="(o3 only) Dispatch / issue width (paper Table 3: 13)")
-parser.add_argument("--l1d-size", type=str, default="32KiB")
+parser.add_argument("--l1d-size", type=str, default="64KiB",
+    help="Private L1D size per core (paper Table 3: 64 KiB, 4-way, 3-cyc).")
+parser.add_argument("--l1i-size", type=str, default="64KiB",
+    help="Private L1I size per core (paper Table 3: 64 KiB, 4-way, 3-cyc).")
 parser.add_argument("--l2-size", type=str, default="1MiB",
     help="Private L2 size per core (paper Table 3: 1MiB, 8-way, 8-cyc).")
 parser.add_argument("--mem-size", type=str, default="512MiB")
@@ -142,7 +145,7 @@ cpu_type_map = {
 
 if args.topology == "chiplet":
     cache_hierarchy = DualChipletPrivateL1PrivateL2CacheHierarchy(
-        l1i_size="32KiB",
+        l1i_size=args.l1i_size,
         l1i_assoc=4,
         l1d_size=args.l1d_size,
         l1d_assoc=4,
@@ -171,7 +174,7 @@ if args.topology == "chiplet":
     )
 else:
     cache_hierarchy = PrivateL1PrivateL2CacheHierarchy(
-        l1i_size="32KiB",
+        l1i_size=args.l1i_size,
         l1i_assoc=4,
         l1d_size=args.l1d_size,
         l1d_assoc=4,
