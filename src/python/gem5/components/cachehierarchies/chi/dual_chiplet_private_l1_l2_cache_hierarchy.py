@@ -173,18 +173,30 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         mem_ranges = board.get_mem_ports()  # list of (range, port)
         mem_addr_ranges = [rng for rng, _ in mem_ranges]
         total_hns = self._num_chiplets * self._hns_per_chiplet
-        assert total_hns >= 1 and (total_hns & (total_hns - 1) == 0), (
-            f"total HN count (num_chiplets * hns_per_chiplet) must be a power "
-            f"of 2 for create_addr_ranges intlv bits; got {total_hns}"
+        # NUMA partition (S1, chiplet.pdf §6.1 + author errata): each chiplet's
+        # HNs cache only that chiplet's NUMA half. Address space is split into
+        # num_chiplets contiguous halves by start/size (top bits select NUMA),
+        # then within each half interleaved across hns_per_chiplet HNs. Both
+        # factors must be powers of 2 so create_addr_ranges intlv bits land
+        # cleanly. (num_chiplets power-of-2 also satisfies the SLICC chipletOf
+        # formula's controller-version layout assumptions.)
+        assert self._num_chiplets >= 1 and (
+            self._num_chiplets & (self._num_chiplets - 1) == 0
+        ), (
+            f"num_chiplets must be a power of 2 for NUMA partition; "
+            f"got {self._num_chiplets}"
         )
         _dirs = []
         for hn_idx in range(total_hns):
             chiplet_idx = hn_idx // self._hns_per_chiplet
+            hn_within_chiplet = hn_idx % self._hns_per_chiplet
             addr_ranges = SimpleDirectory.create_addr_ranges(
-                num_directories=total_hns,
-                dir_idx=hn_idx,
+                num_directories=self._hns_per_chiplet,
+                dir_idx=hn_within_chiplet,
                 mem_ranges=mem_addr_ranges,
                 cache_line_size=board.get_cache_line_size(),
+                numa_id=chiplet_idx,
+                num_numa_domains=self._num_chiplets,
             )
             hn = SimpleDirectory(
                 self.ruby_system.network,

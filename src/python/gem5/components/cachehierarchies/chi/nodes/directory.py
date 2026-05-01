@@ -72,17 +72,51 @@ class BaseDirectory(AbstractNode):
         dir_idx: int,
         mem_ranges: List[AddrRange],
         cache_line_size,
+        numa_id: int = 0,
+        num_numa_domains: int = 1,
     ) -> List[AddrRange]:
+        """Create per-HN address ranges with optional NUMA partition.
+
+        Single-level (num_numa_domains=1, legacy): addresses interleave
+        across `num_directories` HNs by cache-line-offset bits across the
+        whole memory.
+
+        Two-level (num_numa_domains>1, chiplet S1 — Grace-CPU NUMA model
+        per chiplet.pdf §6.1 + author errata): memory is first split into
+        `num_numa_domains` contiguous halves; only HNs in NUMA half k cache
+        addresses in the kth half. `num_directories` becomes the within-NUMA
+        HN count (= hns_per_chiplet); `dir_idx` is the HN index within the
+        NUMA half (0..hns_per_chiplet-1). The two-level partition is
+        achieved by combining the AddrRange's start/size (top bits select
+        NUMA half) with intlvHighBit/intlvBits/intlvMatch (low bits select
+        within-NUMA HN).
+        """
+        assert num_numa_domains >= 1 and (
+            num_numa_domains & (num_numa_domains - 1) == 0
+        ), (
+            f"num_numa_domains must be a power of 2; got {num_numa_domains}"
+        )
+        assert 0 <= numa_id < num_numa_domains, (
+            f"numa_id {numa_id} out of range for num_numa_domains "
+            f"{num_numa_domains}"
+        )
+
         block_size_bits = int(math.log(cache_line_size, 2))
         llc_bits = int(math.log(num_directories, 2))
-        numa_bit = block_size_bits + llc_bits - 1
+        intlv_high_bit = block_size_bits + llc_bits - 1
 
         ranges = []
         for r in mem_ranges:
+            assert r.size() % num_numa_domains == 0, (
+                f"mem_range size {r.size()} not divisible by "
+                f"num_numa_domains {num_numa_domains}"
+            )
+            numa_size = r.size() // num_numa_domains
+            numa_start = int(r.start) + numa_id * numa_size
             addr_range = AddrRange(
-                r.start,
-                size=r.size(),
-                intlvHighBit=numa_bit,
+                numa_start,
+                size=numa_size,
+                intlvHighBit=intlv_high_bit,
                 intlvBits=llc_bits,
                 intlvMatch=dir_idx,
             )
