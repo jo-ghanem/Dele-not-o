@@ -143,13 +143,48 @@ class SimpleDirectory(BaseDirectory):
         chiplet_id: int = 0,
         cores_per_chiplet: int = 16,
         num_chiplets: int = 1,
+        # S3 (chiplet.pdf §6.1 Table 3): optional real LLC at the HN.
+        # When l3_size is None: HN is snoop-filter-only (legacy stub: 128 B
+        # placeholder, all alloc_on_*=False).
+        # When l3_size is set: HN caches data with mostly-exclusive AMBA-5-CHI
+        # semantics — paper defaults are 1 MiB / 16-way / 12-cyc data + 2-cyc
+        # tag. Allocation pattern mirrors upstream configs/ruby/CHI.py
+        # CHI_HNFController defaults (alloc on readshared/readonce/writeback,
+        # NOT on readunique → mostly-exclusive; dealloc on L1-takes-unique).
+        l3_size: str = None,
+        l3_assoc: int = 16,
+        l3_data_latency: int = 12,
+        l3_tag_latency: int = 2,
     ):
         super().__init__(network, cache_line_size)
 
-        # Dummy cache
-        self.cache = RubyCache(
-            dataAccessLatency=0, tagAccessLatency=1, size="128", assoc=1
-        )
+        if l3_size is None:
+            # Legacy stub — directory acts as snoop-filter-only HNF
+            self.cache = RubyCache(
+                dataAccessLatency=0, tagAccessLatency=1, size="128", assoc=1
+            )
+            _alloc_readshared = False
+            _alloc_readonce   = False
+            _alloc_writeback  = False
+            _dealloc_unique   = False
+            self._l3_summary = "stub(128B,1-way,0+1cy)"
+        else:
+            # Real LLC slice — mostly-exclusive
+            self.cache = RubyCache(
+                size=l3_size,
+                assoc=l3_assoc,
+                dataAccessLatency=l3_data_latency,
+                tagAccessLatency=l3_tag_latency,
+                start_index_bit=self.getBlockSizeBits(),
+            )
+            _alloc_readshared = True
+            _alloc_readonce   = True
+            _alloc_writeback  = True
+            _dealloc_unique   = True   # mostly-exclusive: evict on L1 unique
+            self._l3_summary = (
+                f"L3({l3_size},{l3_assoc}-way,"
+                f"{l3_data_latency}+{l3_tag_latency}cy,mostly-excl)"
+            )
 
         self.addr_ranges = addr_ranges
         self.clk_domain = clk_domain
@@ -179,15 +214,17 @@ class SimpleDirectory(BaseDirectory):
         # "Owned state"
         self.allow_SD = True
 
-        # No cache
+        # SLICC `is_HN && alloc_on_*` paths gate HN caching
+        # (CHI-cache-funcs.sm:861-875,1325-1351). With l3_size=None all flags
+        # stay False and the SLICC code never allocates a line at the HN.
         self.alloc_on_seq_acc = False
         self.alloc_on_seq_line_write = False
-        self.alloc_on_readshared = False
-        self.alloc_on_readunique = False
-        self.alloc_on_readonce = False
-        self.alloc_on_writeback = False
-        self.alloc_on_atomic = False
-        self.dealloc_on_unique = False
+        self.alloc_on_readshared = _alloc_readshared
+        self.alloc_on_readunique = False  # mostly-exclusive
+        self.alloc_on_readonce = _alloc_readonce
+        self.alloc_on_writeback = _alloc_writeback
+        self.alloc_on_atomic = False  # AMO-touched lines flow through
+        self.dealloc_on_unique = _dealloc_unique
         self.dealloc_on_shared = False
         self.dealloc_backinv_unique = False
         self.dealloc_backinv_shared = False

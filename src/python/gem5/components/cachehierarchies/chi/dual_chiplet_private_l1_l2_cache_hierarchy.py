@@ -95,6 +95,13 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         mesh_cols: int = 6,
         bridge_router_idx: int = 0,
         hns_per_chiplet: int = 1,
+        # S3: Real LLC at each HN slice. None = legacy snoop-filter-only HN.
+        # Paper-faithful (chiplet.pdf §6.1 Table 3): "1MiB", 16-way, 12+2 cyc,
+        # mostly-exclusive AMBA-5-CHI behavior.
+        l3_size: str = None,
+        l3_assoc: int = 16,
+        l3_data_latency: int = 12,
+        l3_tag_latency: int = 2,
     ):
         super().__init__(
             l1i_size=l1i_size,
@@ -130,6 +137,10 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
             f"got {hns_per_chiplet}"
         )
         self._hns_per_chiplet = hns_per_chiplet
+        self._l3_size = l3_size
+        self._l3_assoc = l3_assoc
+        self._l3_data_latency = l3_data_latency
+        self._l3_tag_latency = l3_tag_latency
 
     @overrides(AbstractCacheHierarchy)
     def incorporate_cache(self, board: AbstractBoard) -> None:
@@ -209,6 +220,10 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
                 chiplet_id=chiplet_idx,
                 cores_per_chiplet=self._cores_per_chiplet,
                 num_chiplets=self._num_chiplets,
+                l3_size=self._l3_size,
+                l3_assoc=self._l3_assoc,
+                l3_data_latency=self._l3_data_latency,
+                l3_tag_latency=self._l3_tag_latency,
             )
             # hns_per_chiplet is a SLICC machine param exposed automatically;
             # set it via the SimObject param interface so chipletOf can use it.
@@ -223,6 +238,11 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
                     f"[ChipletEvidence] HN{hn_idx}(chiplet={chiplet_idx}).addr_range = {r}",
                     flush=True,
                 )
+            # S3 L3 evidence: per-HN cache config (stub vs real LLC)
+            print(
+                f"[L3Evidence] HN{hn_idx}(chiplet={chiplet_idx}).cache = {hn._l3_summary}",
+                flush=True,
+            )
         self.directories = _dirs
 
         # Core clusters; tag each one with its chiplet_id.

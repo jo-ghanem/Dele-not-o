@@ -116,6 +116,19 @@ parser.add_argument("--hns-per-chiplet", type=int, default=1,
 parser.add_argument("--policy-type", type=int, default=1,
     help="L1-side AMO policy: 0=All-Near, 1=Unique-Near (default), "
          "2=Present-Near, 5=All-Central (Stage C — force every AMO to HN)")
+# S3: Real LLC at each HN slice. Default 1MiB matches chiplet.pdf §6.1
+# Table 3 (32 slices × 1 MiB, 16-way, 12-cyc, mostly-exclusive). Set
+# --l3-size "" (empty) to keep the legacy snoop-filter-only HN.
+parser.add_argument("--l3-size", type=str, default="1MiB",
+    help="(chiplet topology only) Per-HN L3 slice size. Empty/None = "
+         "legacy snoop-filter-only HN (no data caching). Paper Table 3: 1MiB.")
+parser.add_argument("--l3-assoc", type=int, default=16,
+    help="(chiplet topology only) L3 associativity. Paper Table 3: 16.")
+parser.add_argument("--l3-data-latency", type=int, default=12,
+    help="(chiplet topology only) L3 data access latency in cycles. "
+         "Paper Table 3: 12.")
+parser.add_argument("--l3-tag-latency", type=int, default=2,
+    help="(chiplet topology only) L3 tag access latency in cycles. Default 2.")
 args = parser.parse_args()
 
 cpu_type_map = {
@@ -148,6 +161,10 @@ if args.topology == "chiplet":
         mesh_cols=args.mesh_cols,
         bridge_router_idx=args.bridge_router_idx,
         hns_per_chiplet=args.hns_per_chiplet,
+        l3_size=(args.l3_size if args.l3_size else None),
+        l3_assoc=args.l3_assoc,
+        l3_data_latency=args.l3_data_latency,
+        l3_tag_latency=args.l3_tag_latency,
     )
 else:
     cache_hierarchy = PrivateL1PrivateL2CacheHierarchy(
