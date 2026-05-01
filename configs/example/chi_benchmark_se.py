@@ -52,9 +52,23 @@ parser.add_argument(
 parser.add_argument("--num-cores", type=int, default=4)
 parser.add_argument("--hn-amo-policy", type=int, default=0,
     help="0=All-Central, 1=Pinned-Owner, 2=Unowned-Central, 3=All-Migrate")
-parser.add_argument("--cpu-type", type=str, default="timing",
+parser.add_argument("--cpu-type", type=str, default="o3",
     choices=["timing", "atomic", "o3"],
-    help="CPU type (timing recommended for protocol testing)")
+    help="CPU type (default 'o3' for paper-faithful Neoverse-V1-class OoO; "
+         "'timing' for fast in-order regression)")
+# S2: Neoverse-V1-class O3 microarch knobs (chiplet.pdf §6.1 Table 3).
+# Applied only when --cpu-type=o3; pattern from configs/example/gem5_library/
+# fdp-hello.py — iterate processor.get_cores() and set c.core.<param>.
+parser.add_argument("--cpu-rob", type=int, default=224,
+    help="(o3 only) Reorder buffer entries (paper Table 3: 224)")
+parser.add_argument("--cpu-lq", type=int, default=76,
+    help="(o3 only) Load queue entries (paper Table 3: 76)")
+parser.add_argument("--cpu-sq", type=int, default=58,
+    help="(o3 only) Store queue entries (paper Table 3: 58)")
+parser.add_argument("--cpu-fetch-width", type=int, default=8,
+    help="(o3 only) Fetch / decode / commit width (paper Table 3: 8)")
+parser.add_argument("--cpu-issue-width", type=int, default=13,
+    help="(o3 only) Dispatch / issue width (paper Table 3: 13)")
 parser.add_argument("--l1d-size", type=str, default="32KiB")
 parser.add_argument("--l2-size", type=str, default="256KiB")
 parser.add_argument("--mem-size", type=str, default="512MiB")
@@ -160,6 +174,26 @@ processor = SimpleProcessor(
     isa=ISA.ARM,
     num_cores=args.num_cores,
 )
+
+# S2 — apply Neoverse-V1-class microarch params per chiplet.pdf §6.1 Table 3.
+# Pattern: configs/example/gem5_library/fdp-hello.py — set fields on c.core
+# (the underlying ArmO3CPU SimObject wrapped by SimpleCore).
+if args.cpu_type == "o3":
+    for c in processor.get_cores():
+        c.core.numROBEntries = args.cpu_rob
+        c.core.LQEntries     = args.cpu_lq
+        c.core.SQEntries     = args.cpu_sq
+        c.core.fetchWidth    = args.cpu_fetch_width
+        c.core.decodeWidth   = args.cpu_fetch_width
+        c.core.commitWidth   = args.cpu_fetch_width
+        c.core.dispatchWidth = args.cpu_issue_width
+        c.core.issueWidth    = args.cpu_issue_width
+    print(
+        f"[O3MicroarchEvidence] cpu_type=o3 ROB={args.cpu_rob} "
+        f"LQ={args.cpu_lq} SQ={args.cpu_sq} "
+        f"fetchW={args.cpu_fetch_width} issueW={args.cpu_issue_width}",
+        flush=True,
+    )
 
 board = SimpleBoard(
     clk_freq="2GHz",
