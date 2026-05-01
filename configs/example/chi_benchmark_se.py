@@ -153,6 +153,16 @@ parser.add_argument("--cpu-clk-freq", type=str, default="3GHz",
 parser.add_argument("--noc-clk-freq", type=str, default="2GHz",
     help="NoC + LLC clock domain (paper Table 3: 2 GHz). Applied to "
          "HN/L3/Garnet network/memory controllers.")
+# S11: Garnet network-wide flit size (bytes per cycle). Paper Table 3
+# specifies 450 GB/s aggregate cross-chiplet bandwidth. With 4 bisection
+# bridge links @ 2 GHz NoC: per-link bw = flit_size * 2 GB/s, aggregate =
+# 4 * per-link. Default 64 B → 512 GB/s aggregate (within ~14% of paper).
+# Set to 16 to restore the gem5 stdlib default for legacy comparisons
+# (~32 GB/s per link, ~128 GB/s aggregate cross-chiplet).
+parser.add_argument("--flit-size", type=int, default=64,
+    help="(chiplet+garnet only) Garnet ni_flit_size in BYTES. Default 64 "
+         "(cache line) → 512 GB/s cross-chiplet at 2 GHz NoC, matching "
+         "paper Table 3's 450 GB/s. Use 16 for legacy.")
 args = parser.parse_args()
 
 cpu_type_map = {
@@ -190,6 +200,7 @@ if args.topology == "chiplet":
         l3_data_latency=args.l3_data_latency,
         l3_tag_latency=args.l3_tag_latency,
         noc_clk_freq=args.noc_clk_freq,
+        flit_size=args.flit_size,
     )
 else:
     cache_hierarchy = PrivateL1PrivateL2CacheHierarchy(

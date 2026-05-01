@@ -56,6 +56,16 @@ class ChipletGarnetMesh(GarnetNetwork):
         inter_link_lat: int = 100,
         bridge_router_idx: int = 0,
         router_latency: int = 1,
+        # S11: Network-wide flit size in BYTES per cycle. Default 64 B
+        # (= cache line) gives 64 B × 2 GHz NoC = 128 GB/s per link, so 4
+        # bisection bridges = 512 GB/s aggregate, matching chiplet.pdf §6.1
+        # Table 3's 450 GB/s target within ~14%. Widening the network globally
+        # avoids the router-outport bottleneck noted in
+        # GARNET_TOPOLOGY_EVIDENCE.md §2a Option A (where wider bridges with
+        # narrow routers don't actually deliver the bandwidth). Set to 16 to
+        # restore the gem5 stdlib default (~32 GB/s per link, ~128 GB/s
+        # aggregate cross-chiplet — Option C).
+        flit_size: int = 64,
     ):
         super().__init__()
         self.netifs = []
@@ -67,11 +77,18 @@ class ChipletGarnetMesh(GarnetNetwork):
         # single bridge IntLink in connectControllers.
         self.num_rows = mesh_rows
 
+        # ni_flit_size is a GarnetNetwork param (inherited via super().__init__)
+        # in BYTES; controls router I/O width and (transitively, via
+        # GarnetIntLink/ExtLink width = Parent.ni_flit_size) the per-link
+        # bandwidth. Set BEFORE any router/link is created.
+        self.ni_flit_size = flit_size
+
         self._mesh_rows = mesh_rows
         self._mesh_cols = mesh_cols
         self._intra_link_lat = intra_link_lat
         self._inter_link_lat = inter_link_lat
         self._bridge_router_idx = bridge_router_idx
+        self._flit_size = flit_size
         self._router_latency = router_latency
 
     def connectControllers(
@@ -448,6 +465,17 @@ class ChipletGarnetMesh(GarnetNetwork):
             )
         else:
             bridge_topology = "ring (1 pair per neighbor × 2 dir)"
+        # S11: report per-link & cross-chiplet aggregate bandwidth for the
+        # configured flit size. Assumes 2 GHz NoC clock; if --noc-clk-freq
+        # changes that, the BW number scales accordingly (the math here is
+        # only for the print, not the simulation — gem5 uses ni_flit_size
+        # directly).
+        per_link_gbs = self._flit_size * 2  # 2 GHz NoC × bytes = GB/s
+        if num_chiplets == 2:
+            cross_chiplet_gbs = per_link_gbs * self._mesh_rows
+        else:
+            # Ring topology: 1 bridge per pair, so aggregate ~= per_link_gbs
+            cross_chiplet_gbs = per_link_gbs
         print(
             f"[GarnetMeshEvidence] num_chiplets={num_chiplets} "
             f"mesh_rows={self._mesh_rows} mesh_cols={self._mesh_cols} "
@@ -455,6 +483,9 @@ class ChipletGarnetMesh(GarnetNetwork):
             f"ext_links={len(self.ext_links)} int_links={len(self.int_links)} "
             f"intra_link_lat={self._intra_link_lat} "
             f"inter_link_lat={self._inter_link_lat} "
+            f"flit_size={self._flit_size}B "
+            f"per_link_bw={per_link_gbs}GB/s "
+            f"cross_chiplet_bw={cross_chiplet_gbs}GB/s "
             f"bridge_topology={bridge_topology}",
             flush=True,
         )

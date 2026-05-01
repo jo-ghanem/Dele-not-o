@@ -109,6 +109,11 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         # voltage_domain and apply it to HN, network, and memory controllers
         # while L1/L2/sequencers stay on the board's CPU clock.
         noc_clk_freq: str = None,
+        # S11: Garnet ni_flit_size in bytes (network-wide). Default 64 B
+        # (cache line) → ~512 GB/s cross-chiplet aggregate over 4 bisection
+        # links at 2 GHz NoC, matching chiplet.pdf §6.1 Table 3's 450 GB/s
+        # target. Set to 16 for legacy gem5 default.
+        flit_size: int = 64,
     ):
         super().__init__(
             l1i_size=l1i_size,
@@ -149,6 +154,7 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
         self._l3_data_latency = l3_data_latency
         self._l3_tag_latency = l3_tag_latency
         self._noc_clk_freq = noc_clk_freq
+        self._flit_size = flit_size
 
     @overrides(AbstractCacheHierarchy)
     def incorporate_cache(self, board: AbstractBoard) -> None:
@@ -189,6 +195,7 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
                 intra_link_lat=self._intra_link_lat,
                 inter_link_lat=self._inter_link_lat,
                 bridge_router_idx=self._bridge_router_idx,
+                flit_size=self._flit_size,
             )
             if self._noc_clk_freq is not None:
                 self.ruby_system.network.clk_domain = self.noc_clk_domain
