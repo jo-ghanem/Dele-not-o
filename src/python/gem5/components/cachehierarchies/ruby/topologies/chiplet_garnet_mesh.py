@@ -74,13 +74,24 @@ class ChipletGarnetMesh(GarnetNetwork):
         self._bridge_router_idx = bridge_router_idx
         self._router_latency = router_latency
 
-    def connectControllers(self, controllers, controller_to_chiplet=None):
+    def connectControllers(
+        self,
+        controllers,
+        controller_to_chiplet=None,
+        controller_to_router_idx=None,
+    ):
         """Build per-chiplet meshes + one inter-chiplet bridge IntLink.
 
         :param controllers: list of all cache/dir/memctrl/dma controllers.
-        :param controller_to_chiplet: dict[controller -> chiplet_id]. Required
-            for v1 (must classify every controller); a controller missing
-            from the map raises AssertionError.
+        :param controller_to_chiplet: dict[controller -> chiplet_id]. Required;
+            a controller missing from the map raises AssertionError.
+        :param controller_to_router_idx: optional dict[controller ->
+            within-chiplet router index]. When provided, every controller is
+            attached to the specified router index (0..R-1) of its chiplet.
+            Used by S5 tile-coupling: a tile's L1i+L1d+L2+HN are co-located
+            on a single router. When None, falls back to the legacy Mesh_XY
+            divmod distribution (used when cores_per_chiplet !=
+            hns_per_chiplet, e.g. M2 4-chiplet × 8-cpc).
         """
         assert controller_to_chiplet is not None, (
             "ChipletGarnetMesh.connectControllers requires "
@@ -94,6 +105,13 @@ class ChipletGarnetMesh(GarnetNetwork):
                 f"Every controller must be classified for the mesh to wire "
                 f"the correct ExtLink to its chiplet's router."
             )
+        if controller_to_router_idx is not None:
+            for c in controllers:
+                assert c in controller_to_router_idx, (
+                    f"Controller {c} is not in controller_to_router_idx map. "
+                    f"With tile coupling enabled, every controller needs a "
+                    f"within-chiplet router index."
+                )
 
         # 1. Discover chiplet count from the map values.
         chiplet_ids = sorted(set(controller_to_chiplet.values()))
@@ -133,34 +151,53 @@ class ChipletGarnetMesh(GarnetNetwork):
         ext_links = []
         int_links = []
 
-        # 4. ExtLinks: distribute each chiplet's controllers across its
-        # routers using the Mesh_XY divmod pattern.
-        for cid in chiplet_ids:
-            ctrls = per_chiplet_ctrls[cid]
-            num_ctrls = len(ctrls)
-            cntrls_per_router, remainder = divmod(num_ctrls, R)
-            # First (num_ctrls - remainder) controllers placed evenly;
-            # remainder controllers tacked onto router 0 of this chiplet.
-            uniform = num_ctrls - remainder
-            for i in range(uniform):
-                level, router_within = divmod(i, R)
-                ext_links.append(
-                    GarnetExtLink(
-                        link_id=link_count,
-                        ext_node=ctrls[i],
-                        int_node=chip_router(cid, router_within),
+        # 4. ExtLinks. Tile-coupling path (S5) when controller_to_router_idx
+        # is provided: each controller attaches to its mapped router; legacy
+        # divmod fallback otherwise.
+        if controller_to_router_idx is not None:
+            for cid in chiplet_ids:
+                for c in per_chiplet_ctrls[cid]:
+                    r_idx = controller_to_router_idx[c]
+                    assert 0 <= r_idx < R, (
+                        f"controller_to_router_idx[{c}] = {r_idx} out of "
+                        f"range [0, {R}) for mesh_rows*mesh_cols={R}"
                     )
-                )
-                link_count += 1
-            for j in range(remainder):
-                ext_links.append(
-                    GarnetExtLink(
-                        link_id=link_count,
-                        ext_node=ctrls[uniform + j],
-                        int_node=chip_router(cid, 0),
+                    ext_links.append(
+                        GarnetExtLink(
+                            link_id=link_count,
+                            ext_node=c,
+                            int_node=chip_router(cid, r_idx),
+                        )
                     )
-                )
-                link_count += 1
+                    link_count += 1
+        else:
+            # Legacy Mesh_XY divmod distribution
+            for cid in chiplet_ids:
+                ctrls = per_chiplet_ctrls[cid]
+                num_ctrls = len(ctrls)
+                cntrls_per_router, remainder = divmod(num_ctrls, R)
+                # First (num_ctrls - remainder) controllers placed evenly;
+                # remainder controllers tacked onto router 0 of this chiplet.
+                uniform = num_ctrls - remainder
+                for i in range(uniform):
+                    level, router_within = divmod(i, R)
+                    ext_links.append(
+                        GarnetExtLink(
+                            link_id=link_count,
+                            ext_node=ctrls[i],
+                            int_node=chip_router(cid, router_within),
+                        )
+                    )
+                    link_count += 1
+                for j in range(remainder):
+                    ext_links.append(
+                        GarnetExtLink(
+                            link_id=link_count,
+                            ext_node=ctrls[uniform + j],
+                            int_node=chip_router(cid, 0),
+                        )
+                    )
+                    link_count += 1
 
         self.ext_links = ext_links
 
@@ -377,11 +414,31 @@ class ChipletGarnetMesh(GarnetNetwork):
         )
         for cid in chiplet_ids:
             ctrl_count = len(per_chiplet_ctrls[cid])
+            mode = "tile-coupled" if controller_to_router_idx else "divmod"
             print(
                 f"[GarnetMeshEvidence] chiplet {cid}: {ctrl_count} controllers "
-                f"distributed across routers [{cid * R} .. {cid * R + R - 1}]",
+                f"distributed across routers [{cid * R} .. {cid * R + R - 1}] "
+                f"({mode})",
                 flush=True,
             )
+        # S5: per-router tile summary when tile coupling is active
+        if controller_to_router_idx is not None:
+            for cid in chiplet_ids:
+                ctrls_by_router = {}
+                for c in per_chiplet_ctrls[cid]:
+                    r = controller_to_router_idx[c]
+                    ctrls_by_router.setdefault(r, []).append(c)
+                for r in sorted(ctrls_by_router.keys()):
+                    cs = ctrls_by_router[r]
+                    types = ",".join(
+                        type(c).__name__.replace("Controller", "")
+                        for c in cs
+                    )
+                    print(
+                        f"[GarnetMeshEvidence] tile chiplet={cid} router={r}: "
+                        f"{len(cs)} ctrls [{types}]",
+                        flush=True,
+                    )
 
     def setup_buffers(self):
         """No-op for Garnet networks.

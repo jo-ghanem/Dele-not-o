@@ -287,6 +287,35 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
             for dma in self.dma_controllers:
                 controller_to_chiplet[dma] = 0
 
+        # S5: build controller_to_router_idx map for tile coupling.
+        # Each tile t on chiplet c hosts (core(c×cpc+t).{L1i,L1d,L2}, HN(c×hpc+t)).
+        # All four controllers attach to within-chiplet router t. This requires
+        # cores_per_chiplet == hns_per_chiplet (= mesh_rows × mesh_cols).
+        # When the equality fails (e.g. M2 4-chiplet × 8-cpc with 16 HNs),
+        # we leave controller_to_router_idx = None so the mesh falls back to
+        # the divmod distribution.
+        controller_to_router_idx = None
+        if (
+            self._network == "garnet"
+            and self._cores_per_chiplet == self._hns_per_chiplet
+            and self._mesh_rows * self._mesh_cols >= self._cores_per_chiplet
+        ):
+            controller_to_router_idx = {}
+            for i, cluster in enumerate(self.core_clusters):
+                tile_t = i % self._cores_per_chiplet
+                controller_to_router_idx[cluster.dcache] = tile_t
+                controller_to_router_idx[cluster.icache] = tile_t
+                controller_to_router_idx[cluster.l2] = tile_t
+            for i, hn in enumerate(self.directories):
+                tile_t = i % self._hns_per_chiplet
+                controller_to_router_idx[hn] = tile_t
+            # Memory + DMA stay on router 0 of their chiplet (chiplet 0).
+            for mc in self.memory_controllers:
+                controller_to_router_idx[mc] = 0
+            if board.has_dma_ports():
+                for dma in self.dma_controllers:
+                    controller_to_router_idx[dma] = 0
+
         # Hard-assert: L1D/L1I/L2 of cluster i should be on chiplet (i // cpc);
         # HN i should be on chiplet i. Catches MachineID-ordering surprises
         # before they corrupt CA-decision results.
@@ -303,9 +332,17 @@ class DualChipletPrivateL1PrivateL2CacheHierarchy(
             + list(self.directories)
             + (self.dma_controllers if board.has_dma_ports() else [])
         )
-        self.ruby_system.network.connectControllers(
-            all_ctrls, controller_to_chiplet=controller_to_chiplet
-        )
+        connect_kwargs = {"controller_to_chiplet": controller_to_chiplet}
+        # ChipletPt2Pt's connectControllers signature does not accept the
+        # tile-coupling kwarg; only forward it for the Garnet network.
+        if (
+            self._network == "garnet"
+            and controller_to_router_idx is not None
+        ):
+            connect_kwargs["controller_to_router_idx"] = (
+                controller_to_router_idx
+            )
+        self.ruby_system.network.connectControllers(all_ctrls, **connect_kwargs)
         self.ruby_system.network.setup_buffers()
 
         self.ruby_system.sys_port_proxy = RubyPortProxy(
