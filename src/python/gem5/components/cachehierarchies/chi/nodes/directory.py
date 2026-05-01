@@ -101,27 +101,44 @@ class BaseDirectory(AbstractNode):
             f"{num_numa_domains}"
         )
 
+        # Compute the LOGICAL physical-memory extent. With ChanneledMemory
+        # (multi-channel DDR), board.get_mem_ports() returns one entry per
+        # channel, all covering the same [start, end) but with different
+        # intlvMatch — and `r.size()` on those interleaved ranges returns the
+        # *effective* per-channel size, not the full extent. Iterating over
+        # them and using r.size() therefore (a) produced N duplicate
+        # AddrRanges per HN and (b) drastically under-counted the NUMA half
+        # size. Use min(start)..max(end) as the union instead, then emit one
+        # HN AddrRange covering numa_id's slice of that union.
+        starts = [int(r.start) for r in mem_ranges]
+        ends = [int(r.end) for r in mem_ranges]
+        mem_start = min(starts)
+        mem_end = max(ends)
+        total_size = mem_end - mem_start
+        assert total_size > 0, (
+            f"empty mem_ranges union: start={mem_start} end={mem_end}"
+        )
+        assert total_size % num_numa_domains == 0, (
+            f"total memory size {total_size} not divisible by "
+            f"num_numa_domains {num_numa_domains}"
+        )
+
+        numa_size = total_size // num_numa_domains
+        numa_start = mem_start + numa_id * numa_size
+
         block_size_bits = int(math.log(cache_line_size, 2))
         llc_bits = int(math.log(num_directories, 2))
         intlv_high_bit = block_size_bits + llc_bits - 1
 
-        ranges = []
-        for r in mem_ranges:
-            assert r.size() % num_numa_domains == 0, (
-                f"mem_range size {r.size()} not divisible by "
-                f"num_numa_domains {num_numa_domains}"
-            )
-            numa_size = r.size() // num_numa_domains
-            numa_start = int(r.start) + numa_id * numa_size
-            addr_range = AddrRange(
+        return [
+            AddrRange(
                 numa_start,
                 size=numa_size,
                 intlvHighBit=intlv_high_bit,
                 intlvBits=llc_bits,
                 intlvMatch=dir_idx,
             )
-            ranges.append(addr_range)
-        return ranges
+        ]
 
 
 class SimpleDirectory(BaseDirectory):
