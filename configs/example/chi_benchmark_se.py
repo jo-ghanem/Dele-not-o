@@ -70,7 +70,8 @@ parser.add_argument("--cpu-fetch-width", type=int, default=8,
 parser.add_argument("--cpu-issue-width", type=int, default=13,
     help="(o3 only) Dispatch / issue width (paper Table 3: 13)")
 parser.add_argument("--l1d-size", type=str, default="32KiB")
-parser.add_argument("--l2-size", type=str, default="256KiB")
+parser.add_argument("--l2-size", type=str, default="1MiB",
+    help="Private L2 size per core (paper Table 3: 1MiB, 8-way, 8-cyc).")
 parser.add_argument("--mem-size", type=str, default="512MiB")
 parser.add_argument("--dynamo-enabled", action="store_true",
     help="Enable DynAMO-Reuse L1 predictor (dynamo.pdf ISCA'23 §5)")
