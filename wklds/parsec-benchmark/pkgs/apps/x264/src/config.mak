@@ -1,0 +1,19 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+bindir=${exec_prefix}/bin
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+ARCH=AARCH64
+SYS=LINUX
+CC=aarch64-unknown-linux-gnu-gcc
+CFLAGS=-O4 -ffast-math  -Wall -I. -DHAVE_MALLOC_H -DARCH_AARCH64 -DSYS_LINUX -s -fomit-frame-pointer
+ALTIVECFLAGS=
+LDFLAGS= -lm -s
+AS=yasm
+ASFLAGS=
+EXE=
+VIS=no
+HAVE_GETOPT_LONG=1
+DEVNULL=/dev/null
+ECHON=echo -n
+CONFIGURE_ARGS= '--host=aarch64-unknown-linux-gnu' '--cross-prefix=aarch64-unknown-linux-gnu-' '--enable-static' '--disable-asm'

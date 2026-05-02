@@ -1,0 +1,6 @@
+# These are too agressive, don't use
+find . -type f -name "Makefile*" -exec sed -i 's|/usr/bin/ar|$(AR)|g' {} +
+
+find . -type f -name "Makefile*" -exec sed -i 's|/usr/bin/ranlib|$(RANLIB)|g' {} +
+
+sed -i 's|/usr/bin/ar|aarch64-unknown-linux-gnu-ar|g' Makefile.config

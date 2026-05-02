@@ -10,6 +10,8 @@ cscope.out
 *~
 .*.swp
 .*.swo
+*.tar
+*.tar.gz
 m5out
 /src/doxygen/html
 /docs/_build
@@ -40,3 +42,4 @@ typings
 .DS_Store
 /ecn/
 ecn/
+
