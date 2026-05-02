@@ -190,29 +190,36 @@ tail ~/run_t<your-num>.log
 
 ## When everyone's done — collation + plotting
 
-One person runs:
+The plotter reads `stats.txt` + `delegate_trace.txt` directly out of each
+per-cell `m5out/<bench>_p<P>_d<D>_n<N>/` directory — no CSV pre-step needed.
+
+**One person runs** (whoever has all 4 teammates' m5out dirs locally — or
+runs on ECN where everyone wrote into the same `m5out/`):
 
 ```bash
 cd <PATH-TO-CLONE>
 
-# 1. Collect every comparison_results_*.txt (per-bench CSVs from extract_counters)
-mkdir -p benchmark/paper_faithful_charts/raw
-find m5out -name "comparison_results_*.txt" \
-  -exec cp {} benchmark/paper_faithful_charts/raw/ \;
+# (If teammates ran on different hosts) rsync each m5out into one place:
+#   rsync -av <T1-HOST>:<T1-PATH-TO-CLONE>/m5out/ ./m5out/
+#   rsync -av <T2-HOST>:<T2-PATH-TO-CLONE>/m5out/ ./m5out/
+#   ... etc.
+# Per-cell dir names are unique (bench × policy × dyn × cores), so a merged
+# m5out/ is unambiguous.
 
-# 2. (If you ran on ECN) pull raw/ to your laptop:
-#    scp -r <ECN-USER>@<ECN-HOST>:<PATH-TO-CLONE>/benchmark/paper_faithful_charts/raw/ ./benchmark/paper_faithful_charts/raw/
-
-# 3. Plot (matplotlib script lives in benchmark/paper_faithful_charts/scripts/)
+# Generate the 6 charts as PNGs
 python3 benchmark/paper_faithful_charts/scripts/plot_charts.py \
-  --raw benchmark/paper_faithful_charts/raw \
-  --out benchmark/paper_faithful_charts/plots
+  --m5out m5out \
+  --out   benchmark/paper_faithful_charts/plots
 ls benchmark/paper_faithful_charts/plots/   # 6 PNGs
 ```
 
 The plot script generates: `chart1_ipc_per_config.png`, `chart2_ipc_vs_amo_latency.png`,
 `chart3_speedup.png`, `chart4_packet_reduction.png`, `chart5_cache_line_transfers.png`,
 `chart6_amo_location.png`.
+
+> Chart 2 only renders if at least one cell named like `<bench>_amolat<NS>ns_p<P>_d<D>_n<N>/`
+> exists (Teammate 4's output — the latency-rename `mv` step in their
+> script produces this naming).
 
 ---
 
