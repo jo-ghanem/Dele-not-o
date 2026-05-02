@@ -31,11 +31,33 @@ scons-3 USE_HDF5=0 -j 16 build/ARM/gem5.opt
 #   export PATH=/package/gcc/8.3.0/bin:$PATH
 #   export LD_LIBRARY_PATH=/package/gcc/8.3.0/lib64:$LD_LIBRARY_PATH
 
-# 3. Sanity check the runner
+# 3. Build SPLASH-4 benchmarks (~5 min; one-time)
+#    PARSEC binaries are already in wklds/binaries/parsec/ — only SPLASH
+#    needs to be cross-compiled to ARM aarch64.
+TC=<PATH-TO-AARCH64-TOOLCHAIN>     # e.g. arm-gnu-toolchain-13.3.rel1-...-aarch64-none-linux-gnu
+export CC="$TC/bin/aarch64-none-linux-gnu-gcc"
+export CFLAGS="-O2 -static -march=armv8.1-a -pthread -D_GNU_SOURCE"
+export LDFLAGS="-lm -lpthread -static"
+SPLASH=wklds/Splash-4/Splash-4
+for bench in fft radix lu-contiguous_blocks barnes fmm \
+             ocean-contiguous_partitions water-nsquared water-spatial; do
+  (cd "$SPLASH/$bench" && make clean 2>/dev/null; \
+   make BASEDIR="$PWD/$SPLASH/.." CC="$CC" CFLAGS="$CFLAGS" \
+        LDFLAGS="$LDFLAGS") || echo "WARN: $bench build failed"
+done
+# Verify a few were built:
+file $SPLASH/barnes/BARNES $SPLASH/fmm/FMM $SPLASH/fft/FFT 2>&1 | head
+
+# 4. Sanity check the runner
 python3 run_bmk.py --help
 ```
 
-**No path edits needed** — `run_bmk.py` resolves all paths from its own
+**On ECN**: the prebuilt aarch64 toolchain is usually at
+`$HOME/bin_gem5/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu`
+— set `TC=$HOME/bin_gem5/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu`.
+If you don't have it, ask the team — toni or Adam can share their copy.
+
+**No path edits needed in run_bmk.py** — it resolves all paths from its own
 location. If your wklds/ is somewhere else, set `WKLDS_HOME=<PATH-TO-WKLDS-PARENT>`.
 
 ---
