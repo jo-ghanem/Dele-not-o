@@ -51,6 +51,11 @@ parser.add_argument(
     "--args", type=str, default="",
     help="Arguments to pass to the binary (space-separated string)",
 )
+parser.add_argument(
+    "--stdin", type=str, default=None,
+    help="Path to a file to redirect to the binary's stdin (needed by SPLASH-4 "
+         "barnes/fmm/water_* which read input from stdin).",
+)
 parser.add_argument("--num-cores", type=int, default=4)
 parser.add_argument("--hn-amo-policy", type=int, default=0,
     help="0=All-Central, 1=Pinned-Owner, 2=Unowned-Central, 3=All-Migrate")
@@ -274,7 +279,17 @@ print(
 binary_resource = BinaryResource(local_path=args.binary)
 binary_args = args.args.split() if args.args else []
 
-board.set_se_binary_workload(binary_resource, arguments=binary_args)
+stdin_resource = None
+if args.stdin:
+    from gem5.resources.resource import FileResource
+    stdin_resource = FileResource(local_path=args.stdin)
+    print(f"[StdinEvidence] redirecting binary stdin from: {args.stdin}", flush=True)
+
+board.set_se_binary_workload(
+    binary_resource,
+    arguments=binary_args,
+    stdin_file=stdin_resource,
+)
 
 print(
     f"Starting CHI benchmark: binary={args.binary} "
