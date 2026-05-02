@@ -22,7 +22,7 @@ Replace `<PATH-TO-CLONE>` with where you cloned the repo.
 # 1. Clone + check out chiplet branch
 git clone <REPO_URL> <PATH-TO-CLONE>
 cd <PATH-TO-CLONE>
-git checkout chiplet
+git checkout bmking
 git submodule update --init --recursive    # pulls wklds/Splash-4, wklds/parsec-benchmark
 
 # 2. Build gem5 (~15 min; only once)
